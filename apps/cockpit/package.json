@@ -1,0 +1,40 @@
+{
+  "name": "@leash/cockpit",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "next build",
+    "dev": "next dev --port 3001",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@leash/db": "workspace:*",
+    "@leash/types": "workspace:*",
+    "@leash/crypto": "workspace:*",
+    "next": "^14.2.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "ag-grid-react": "^32.0.0",
+    "ag-grid-community": "^32.0.0",
+    "ag-grid-enterprise": "^32.0.0",
+    "ag-charts-react": "^10.0.0",
+    "ag-charts-community": "^10.0.0",
+    "next-auth": "^5.0.0-beta.19",
+    "zod": "^3.23.0",
+    "@paypal/react-paypal-js": "^8.3.0",
+    "socket.io-client": "^4.7.5",
+    "swr": "^2.2.5",
+    "lucide-react": "^0.400.0",
+    "clsx": "^2.1.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5",
+    "@types/node": "^20.14.0",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "eslint": "^9.0.0",
+    "eslint-config-next": "^14.2.4"
+  }
+}
