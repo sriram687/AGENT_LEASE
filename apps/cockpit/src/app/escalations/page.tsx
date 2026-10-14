@@ -3,30 +3,74 @@ import { EscalationInbox } from "@/components/escalations/EscalationInbox";
 import { getPendingEscalations } from "@/lib/api/escalations";
 
 export const metadata = { title: "Escalations — Agent Leash" };
-export const dynamic = "force-dynamic"; // Always fresh — escalations change in real time
+export const dynamic = "force-dynamic";
 
 export default async function EscalationsPage() {
   const escalations = await getPendingEscalations();
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
+    <div style={{ display: "flex", flexDirection: "column", gap: "24px" }} className="animate-fade-in">
+      {/* Header Banner */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          flexWrap: "wrap",
+          gap: "16px",
+          background: "#ffffff",
+          border: "var(--border-thick)",
+          borderRadius: "var(--radius-lg)",
+          padding: "20px 24px",
+          boxShadow: "var(--shadow-base)",
+        }}
+      >
         <div>
-          <h1 className="text-2xl font-semibold text-gray-50">Escalation Inbox</h1>
-          <p className="text-sm text-gray-400 mt-1">
-            Purchase requests that exceeded the auto-approve threshold and require your review.
-            Requests expire if not actioned.
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <h1 style={{ fontSize: "24px", fontWeight: 900, color: "#121212", letterSpacing: "-0.02em" }}>
+              ESCALATION INBOX
+            </h1>
+            <span
+              style={{
+                background: "var(--neo-yellow)",
+                border: "1.5px solid #121212",
+                padding: "2px 10px",
+                borderRadius: "var(--radius-pill)",
+                fontSize: "11px",
+                fontWeight: 800,
+                boxShadow: "1.5px 1.5px 0px #121212",
+              }}
+            >
+              HUMAN IN THE LOOP
+            </span>
+          </div>
+          <p style={{ fontSize: "13px", fontWeight: 500, color: "#4b5563", marginTop: "4px" }}>
+            Purchase requests that exceeded auto-approve policy thresholds and require human authorization.
           </p>
         </div>
-        <div className="flex items-center gap-2 rounded-lg border px-3 py-2 text-sm"
-          style={{ borderColor: "var(--color-border)", color: "var(--color-text-secondary)", background: "var(--color-surface-1)" }}>
-          <span className="font-semibold text-gray-200">{escalations.length}</span>
-          &nbsp;pending
+
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            background: "#fef08a",
+            border: "var(--border-medium)",
+            borderRadius: "var(--radius-pill)",
+            padding: "8px 16px",
+            boxShadow: "var(--shadow-sm)",
+          }}
+        >
+          <span style={{ fontSize: "14px", fontWeight: 900, color: "#121212" }}>
+            {escalations.length}
+          </span>
+          <span style={{ fontSize: "12px", fontWeight: 800, color: "#854d0e" }}>
+            PENDING REVIEW
+          </span>
         </div>
       </div>
 
       <Suspense fallback={<InboxSkeleton />}>
-        {/* EscalationInbox is a client component, receives serialized data from server */}
         <EscalationInbox escalations={escalations as any} />
       </Suspense>
     </div>
@@ -35,9 +79,9 @@ export default async function EscalationsPage() {
 
 function InboxSkeleton() {
   return (
-    <div className="space-y-4">
+    <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
       {[1, 2, 3].map((i) => (
-        <div key={i} className="card-elevated h-52 animate-pulse rounded-xl" />
+        <div key={i} className="card" style={{ height: "180px", opacity: 0.6 }} />
       ))}
     </div>
   );

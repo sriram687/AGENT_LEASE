@@ -18,7 +18,7 @@ export function SpendChart({ data }: SpendChartProps) {
   const options: AgChartOptions = useMemo(
     () => ({
       theme: {
-        baseTheme: "ag-default-dark",
+        baseTheme: "ag-default",
         overrides: {
           common: {
             background: { fill: "transparent" },
@@ -37,21 +37,21 @@ export function SpendChart({ data }: SpendChartProps) {
           xKey: "date",
           yKey: "spent",
           yName: "Spent ($)",
-          fill: "rgba(59,130,246,0.3)",
-          stroke: "#3b82f6",
-          strokeWidth: 2,
-          marker: { enabled: false },
+          fill: "rgba(99, 102, 241, 0.25)",
+          stroke: "#4f46e5",
+          strokeWidth: 3,
+          marker: { enabled: true, fill: "#4f46e5", stroke: "#121212", strokeWidth: 2, size: 6 },
         },
         {
           type: "area" as const,
           xKey: "date",
           yKey: "reserved",
           yName: "Reserved ($)",
-          fill: "rgba(245,158,11,0.15)",
-          stroke: "#f59e0b",
-          strokeWidth: 2,
-          strokeDash: [4, 4],
-          marker: { enabled: false },
+          fill: "rgba(250, 204, 21, 0.25)",
+          stroke: "#d97706",
+          strokeWidth: 3,
+          strokeDash: [5, 5],
+          marker: { enabled: true, fill: "#facc15", stroke: "#121212", strokeWidth: 2, size: 6 },
         },
       ],
       axes: [
@@ -60,29 +60,31 @@ export function SpendChart({ data }: SpendChartProps) {
           position: "bottom" as const,
           label: {
             format: "%b %d",
-            color: "#64748b",
-            fontSize: 11,
+            color: "#121212",
+            fontSize: 12,
+            fontWeight: "bold",
           },
-          line: { color: "#1e293b" },
-          gridLine: { style: [{ stroke: "#1e293b", lineDash: [4, 4] }] },
+          line: { color: "#121212", width: 2 },
+          gridLine: { style: [{ stroke: "#e2e8f0", lineDash: [3, 3] }] },
         },
         {
           type: "number" as const,
           position: "left" as const,
           label: {
             formatter: (p: { value: number }) => `$${p.value.toFixed(0)}`,
-            color: "#64748b",
-            fontSize: 11,
+            color: "#121212",
+            fontSize: 12,
+            fontWeight: "bold",
           },
-          line: { color: "#1e293b" },
-          gridLine: { style: [{ stroke: "#1e293b", lineDash: [4, 4] }] },
+          line: { color: "#121212", width: 2 },
+          gridLine: { style: [{ stroke: "#e2e8f0", lineDash: [3, 3] }] },
         },
       ],
       legend: {
         enabled: true,
         position: "top" as const,
         item: {
-          label: { color: "#94a3b8", fontSize: 12 },
+          label: { color: "#121212", fontSize: 13, fontWeight: "bold" },
         },
       },
       tooltip: { enabled: true },
@@ -92,18 +94,48 @@ export function SpendChart({ data }: SpendChartProps) {
 
   return (
     <div
-      className="card p-6"
-      style={{ height: 320 }}
+      className="card"
+      style={{
+        padding: "24px",
+        minHeight: "360px",
+        display: "flex",
+        flexDirection: "column",
+      }}
     >
-      <div className="mb-4 flex items-center justify-between">
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: "16px",
+          borderBottom: "var(--border-thin)",
+          paddingBottom: "12px",
+        }}
+      >
         <div>
-          <h3 className="text-sm font-semibold text-gray-200">Spend Timeline</h3>
-          <p className="text-xs text-gray-500 mt-0.5">
-            Budget consumption over the mandate period
+          <h3 style={{ fontSize: "16px", fontWeight: 800, color: "#121212", letterSpacing: "-0.01em" }}>
+            SPEND TIMELINE
+          </h3>
+          <p style={{ fontSize: "12px", fontWeight: 500, color: "#6b7280", marginTop: "2px" }}>
+            Mandate consumption & reserved holds
           </p>
         </div>
+        <span
+          style={{
+            background: "#f1f5f9",
+            border: "1.5px solid #121212",
+            borderRadius: "var(--radius-pill)",
+            padding: "4px 12px",
+            fontSize: "11px",
+            fontWeight: 800,
+          }}
+        >
+          USD ($)
+        </span>
       </div>
-      <AgCharts options={options} style={{ height: 240 }} />
+      <div style={{ flex: 1, minHeight: "260px" }}>
+        <AgCharts options={options} style={{ height: 260 }} />
+      </div>
     </div>
   );
 }

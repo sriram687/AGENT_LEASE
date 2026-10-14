@@ -43,14 +43,35 @@ export function KillSwitch({
   if (revoked) {
     return (
       <div
-        className="rounded-xl border p-5 text-center"
-        style={{ background: "rgba(239,68,68,0.05)", borderColor: "rgba(239,68,68,0.2)" }}
+        className="card"
+        style={{
+          background: "#fee2e2",
+          border: "var(--border-thick)",
+          borderRadius: "var(--radius-lg)",
+          padding: "24px",
+          textAlign: "center",
+          boxShadow: "var(--shadow-base)",
+        }}
       >
-        <ShieldOff size={24} color="#ef4444" className="mx-auto mb-2" />
-        <p className="text-sm font-semibold" style={{ color: "#ef4444" }}>
-          Mandate revoked
+        <div
+          style={{
+            width: "48px",
+            height: "48px",
+            borderRadius: "50%",
+            background: "#ffffff",
+            border: "var(--border-medium)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            margin: "0 auto 12px",
+          }}
+        >
+          <ShieldOff size={24} color="#dc2626" strokeWidth={2.5} />
+        </div>
+        <p style={{ fontSize: "16px", fontWeight: 900, color: "#991b1b" }}>
+          MANDATE REVOKED
         </p>
-        <p className="text-xs mt-1" style={{ color: "var(--color-text-muted)" }}>
+        <p style={{ fontSize: "12px", fontWeight: 600, color: "#7f1d1d", marginTop: "4px" }}>
           All open authorizations have been voided. No further spending is possible.
         </p>
       </div>
@@ -59,26 +80,57 @@ export function KillSwitch({
 
   return (
     <div
-      className="rounded-xl border p-5"
-      style={{ background: "rgba(239,68,68,0.04)", borderColor: "rgba(239,68,68,0.15)" }}
+      className="card"
+      style={{
+        background: "#ffffff",
+        border: "var(--border-thick)",
+        borderRadius: "var(--radius-lg)",
+        padding: "20px",
+        boxShadow: "var(--shadow-base)",
+      }}
     >
-      <div className="flex items-start gap-3">
+      <div style={{ display: "flex", alignItems: "flex-start", gap: "12px" }}>
         <div
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
-          style={{ background: "rgba(239,68,68,0.1)" }}
+          style={{
+            width: "40px",
+            height: "40px",
+            borderRadius: "10px",
+            background: "#fee2e2",
+            border: "var(--border-medium)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+            boxShadow: "var(--shadow-sm)",
+          }}
         >
-          <ShieldOff size={18} color="#ef4444" />
+          <ShieldOff size={20} color="#dc2626" strokeWidth={2.5} />
         </div>
-        <div className="flex-1">
-          <p className="text-sm font-semibold text-gray-200">Kill Switch</p>
-          <p className="text-xs mt-0.5" style={{ color: "var(--color-text-secondary)" }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <p style={{ fontSize: "15px", fontWeight: 900, color: "#121212" }}>KILL SWITCH</p>
+            <span
+              style={{
+                background: "#fee2e2",
+                color: "#991b1b",
+                border: "1px solid #121212",
+                borderRadius: "var(--radius-pill)",
+                padding: "1px 8px",
+                fontSize: "10px",
+                fontWeight: 800,
+              }}
+            >
+              HIGH IMPACT
+            </span>
+          </div>
+          <p style={{ fontSize: "12px", fontWeight: 500, color: "#4b5563", marginTop: "3px" }}>
             Immediately revokes this mandate and voids all{" "}
-            <span style={{ color: "#fca5a5", fontWeight: 600 }}>
+            <span style={{ color: "#dc2626", fontWeight: 800 }}>
               {openAuthorizationsCount} open authorization{openAuthorizationsCount !== 1 ? "s" : ""}
             </span>
-            . No additional charges will be possible.
+            .
           </p>
-          <p className="text-xs mt-1 italic" style={{ color: "var(--color-text-muted)" }}>
+          <p style={{ fontSize: "11px", fontWeight: 600, color: "#6b7280", marginTop: "4px" }}>
             Mandate: {mandatePurpose}
           </p>
         </div>
@@ -88,33 +140,45 @@ export function KillSwitch({
         <button
           id={`kill-switch-${mandateId}`}
           onClick={() => setShowConfirm(true)}
-          className="kill-switch-btn mt-4 w-full"
+          className="kill-switch-btn"
+          style={{ marginTop: "16px", width: "100%" }}
         >
           Activate Kill Switch
         </button>
       ) : (
-        <div className="mt-4 rounded-lg border p-4 animate-fade-in" style={{ borderColor: "rgba(239,68,68,0.3)", background: "rgba(239,68,68,0.06)" }}>
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <AlertTriangle size={14} color="#fca5a5" />
-              <p className="text-xs font-semibold" style={{ color: "#fca5a5" }}>
-                This action is irreversible
+        <div
+          style={{
+            marginTop: "16px",
+            borderRadius: "var(--radius-md)",
+            border: "var(--border-medium)",
+            padding: "16px",
+            background: "#fff1f2",
+            boxShadow: "var(--shadow-sm)",
+          }}
+          className="animate-fade-in"
+        >
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <AlertTriangle size={15} color="#b91c1c" strokeWidth={2.5} />
+              <p style={{ fontSize: "12px", fontWeight: 800, color: "#991b1b" }}>
+                THIS ACTION IS IRREVERSIBLE
               </p>
             </div>
             <button
               onClick={() => { setShowConfirm(false); setConfirmText(""); }}
-              style={{ color: "var(--color-text-muted)" }}
+              style={{ background: "none", border: "none", cursor: "pointer", color: "#6b7280" }}
             >
-              <X size={14} />
+              <X size={16} strokeWidth={2.5} />
             </button>
           </div>
-          <p className="text-xs mb-3" style={{ color: "var(--color-text-secondary)" }}>
-            Type <strong style={{ color: "#fca5a5" }}>{CONFIRM_PHRASE}</strong> to confirm.
+          <p style={{ fontSize: "12px", fontWeight: 600, color: "#4b5563", marginBottom: "10px" }}>
+            Type <strong style={{ color: "#b91c1c" }}>{CONFIRM_PHRASE}</strong> to confirm:
           </p>
           <input
             id={`kill-switch-confirm-${mandateId}`}
             type="text"
-            className="input mb-3"
+            className="input"
+            style={{ marginBottom: "12px" }}
             placeholder={CONFIRM_PHRASE}
             value={confirmText}
             onChange={(e) => setConfirmText(e.target.value.toUpperCase())}
@@ -125,14 +189,8 @@ export function KillSwitch({
             id={`kill-switch-execute-${mandateId}`}
             onClick={handleRevoke}
             disabled={confirmText !== CONFIRM_PHRASE || isPending}
-            className="w-full rounded-lg py-2.5 text-sm font-semibold transition-all"
-            style={{
-              background:
-                confirmText === CONFIRM_PHRASE ? "#b91c1c" : "rgba(239,68,68,0.1)",
-              color: confirmText === CONFIRM_PHRASE ? "#fef2f2" : "#ef4444",
-              opacity: isPending ? 0.6 : 1,
-              cursor: confirmText === CONFIRM_PHRASE ? "pointer" : "not-allowed",
-            }}
+            className="btn btn-danger"
+            style={{ width: "100%", padding: "10px", fontSize: "13px" }}
           >
             {isPending ? "Revoking…" : "Confirm — Revoke Mandate"}
           </button>

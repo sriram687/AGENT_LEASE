@@ -7,6 +7,7 @@ import { ChainStatus } from "@/components/dashboard/ChainStatus";
 import { getMandateSummary } from "@/lib/api/mandates";
 import { getPendingEscalations } from "@/lib/api/escalations";
 import { getSpendTimeline } from "@/lib/api/ledger";
+import { DollarSign, PieChart, Lock, Sparkles } from "lucide-react";
 
 export const metadata = {
   title: "Dashboard — Agent Leash",
@@ -28,69 +29,144 @@ export default async function DashboardPage() {
     : 0;
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      {/* Page header */}
-      <div className="flex items-center justify-between">
+    <div style={{ display: "flex", flexDirection: "column", gap: "24px" }} className="animate-fade-in">
+      {/* Header Banner */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          flexWrap: "wrap",
+          gap: "16px",
+          background: "#ffffff",
+          border: "var(--border-thick)",
+          borderRadius: "var(--radius-lg)",
+          padding: "20px 24px",
+          boxShadow: "var(--shadow-base)",
+        }}
+      >
         <div>
-          <h1 className="text-2xl font-semibold text-gray-50">Command Center</h1>
-          <p className="text-sm text-gray-400 mt-1">
-            All agent spending activity, audit trail, and policy controls
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <h1
+              style={{
+                fontSize: "26px",
+                fontWeight: 900,
+                color: "#121212",
+                letterSpacing: "-0.03em",
+              }}
+            >
+              COMMAND CENTER
+            </h1>
+            <span
+              style={{
+                background: "var(--neo-yellow)",
+                border: "1.5px solid #121212",
+                padding: "2px 10px",
+                borderRadius: "var(--radius-pill)",
+                fontSize: "11px",
+                fontWeight: 800,
+                boxShadow: "1.5px 1.5px 0px #121212",
+              }}
+            >
+              V1.0
+            </span>
+          </div>
+          <p
+            style={{
+              fontSize: "13px",
+              fontWeight: 500,
+              color: "#4b5563",
+              marginTop: "4px",
+            }}
+          >
+            Cryptographically-governed spending mandates, audit trail, and policy controls
           </p>
         </div>
-        <div className="flex items-center gap-2">
+
+        {/* Live Status Sticker */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            background: "var(--neo-green-light)",
+            border: "var(--border-medium)",
+            borderRadius: "var(--radius-pill)",
+            padding: "8px 16px",
+            boxShadow: "var(--shadow-sm)",
+          }}
+        >
           <span className="live-dot" />
-          <span className="text-xs text-gray-400 font-medium">Live</span>
+          <span style={{ fontSize: "12px", fontWeight: 800, color: "#064e3b" }}>
+            GATEWAY ACTIVE
+          </span>
         </div>
       </div>
 
-      {/* Pending escalations banner */}
+      {/* Pending escalations alert */}
       {pendingEscalations.length > 0 && (
         <EscalationAlert count={pendingEscalations.length} />
       )}
 
-      {/* KPI stat cards */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      {/* KPI Stat Cards Grid */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+          gap: "18px",
+        }}
+      >
         <StatCard
           label="Total Budget"
           value={`$${((mandateSummary?.totalBudgetCents ?? 0) / 100).toFixed(2)}`}
           sub="Mandate ceiling"
           color="brand"
+          icon={<DollarSign size={16} color="#121212" strokeWidth={2.5} />}
         />
         <StatCard
           label="Spent"
           value={`$${((mandateSummary?.spentCents ?? 0) / 100).toFixed(2)}`}
           sub={`${budgetUtilization}% utilized`}
           color="violet"
+          icon={<PieChart size={16} color="#121212" strokeWidth={2.5} />}
         />
         <StatCard
           label="Reserved"
           value={`$${((mandateSummary?.reservedCents ?? 0) / 100).toFixed(2)}`}
           sub="Open authorizations"
           color="amber"
+          icon={<Lock size={16} color="#121212" strokeWidth={2.5} />}
         />
         <StatCard
           label="Available"
           value={`$${(((mandateSummary?.totalBudgetCents ?? 0) - (mandateSummary?.spentCents ?? 0) - (mandateSummary?.reservedCents ?? 0)) / 100).toFixed(2)}`}
           sub="Remaining for agent"
           color="green"
+          icon={<Sparkles size={16} color="#121212" strokeWidth={2.5} />}
         />
       </div>
 
-      {/* Charts + activity */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2">
+      {/* Chart + Recent Activity */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))",
+          gap: "24px",
+        }}
+      >
+        <div style={{ flex: 2 }}>
           <Suspense fallback={<ChartSkeleton />}>
             <SpendChart data={spendTimeline} />
           </Suspense>
         </div>
-        <div>
+        <div style={{ flex: 1 }}>
           <Suspense fallback={<ActivitySkeleton />}>
             <RecentActivity />
           </Suspense>
         </div>
       </div>
 
-      {/* Ledger chain integrity */}
+      {/* Ledger Chain Integrity */}
       <ChainStatus />
     </div>
   );
@@ -98,16 +174,32 @@ export default async function DashboardPage() {
 
 function ChartSkeleton() {
   return (
-    <div className="card p-6 h-64 flex items-center justify-center">
-      <div className="text-gray-500 text-sm">Loading spend data…</div>
+    <div
+      className="card"
+      style={{
+        height: "360px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      <div style={{ color: "#6b7280", fontSize: "14px", fontWeight: 600 }}>Loading spend data…</div>
     </div>
   );
 }
 
 function ActivitySkeleton() {
   return (
-    <div className="card p-6 h-64 flex items-center justify-center">
-      <div className="text-gray-500 text-sm">Loading activity…</div>
+    <div
+      className="card"
+      style={{
+        height: "360px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      <div style={{ color: "#6b7280", fontSize: "14px", fontWeight: 600 }}>Loading activity…</div>
     </div>
   );
 }

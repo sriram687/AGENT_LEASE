@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, User, ChevronDown } from "lucide-react";
+import { Bell, Search, ShieldCheck } from "lucide-react";
 import { useSession } from "next-auth/react";
 
 export function TopBar() {
@@ -8,53 +8,140 @@ export function TopBar() {
 
   return (
     <header
-      className="flex h-14 items-center justify-between border-b px-6"
       style={{
-        background: "var(--color-surface-1)",
-        borderColor: "var(--color-border)",
+        display: "flex",
+        height: "64px",
+        alignItems: "center",
+        justifyContent: "space-between",
+        borderBottom: "var(--border-thick)",
+        padding: "0 28px",
+        background: "#ffffff",
+        flexShrink: 0,
       }}
     >
-      {/* Left: breadcrumb is injected per-page via Next.js metadata */}
-      <div />
+      {/* Search Bar style like reference */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "10px",
+          background: "#f4f6f0",
+          border: "var(--border-medium)",
+          borderRadius: "var(--radius-pill)",
+          padding: "7px 16px",
+          width: "360px",
+          boxShadow: "var(--shadow-sm)",
+        }}
+      >
+        <Search size={16} color="#121212" strokeWidth={2.5} />
+        <input
+          type="text"
+          placeholder="Search mandates, agents, transactions..."
+          style={{
+            background: "transparent",
+            border: "none",
+            outline: "none",
+            fontSize: "13px",
+            fontWeight: 600,
+            color: "#121212",
+            width: "100%",
+            fontFamily: "inherit",
+          }}
+        />
+      </div>
 
-      {/* Right: notifications + user */}
-      <div className="flex items-center gap-4">
-        {/* Notification bell */}
+      {/* Right controls */}
+      <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+        {/* Security badge pill */}
+        <div
+          style={{
+            display: "none",
+            alignItems: "center",
+            gap: "6px",
+            background: "var(--neo-green-light)",
+            border: "var(--border-thin)",
+            padding: "5px 12px",
+            borderRadius: "var(--radius-pill)",
+            fontSize: "12px",
+            fontWeight: 800,
+            color: "#064e3b",
+          }}
+          className="sm:flex"
+        >
+          <ShieldCheck size={15} strokeWidth={2.5} />
+          <span>Ed25519 Enforced</span>
+        </div>
+
+        {/* Notification bell pill */}
         <button
           id="notification-bell"
           aria-label="View notifications"
-          className="relative flex h-8 w-8 items-center justify-center rounded-lg transition-colors hover:bg-white/5"
-          style={{ color: "var(--color-text-secondary)" }}
+          style={{
+            position: "relative",
+            display: "flex",
+            height: "40px",
+            width: "40px",
+            alignItems: "center",
+            justifyContent: "center",
+            borderRadius: "var(--radius-pill)",
+            background: "#ffffff",
+            border: "var(--border-medium)",
+            boxShadow: "var(--shadow-sm)",
+            cursor: "pointer",
+            transition: "transform 0.1s ease",
+          }}
         >
-          <Bell size={16} />
-          {/* Unread dot */}
+          <Bell size={18} color="#121212" strokeWidth={2.2} />
           <span
-            className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full"
-            style={{ background: "var(--color-escalated)" }}
+            style={{
+              position: "absolute",
+              right: "2px",
+              top: "2px",
+              height: "10px",
+              width: "10px",
+              borderRadius: "50%",
+              background: "var(--neo-orange)",
+              border: "1.5px solid #121212",
+            }}
           />
         </button>
 
-        {/* User menu */}
-        <button
-          id="user-menu"
-          aria-label="User menu"
-          className="flex items-center gap-2 rounded-lg px-3 py-1.5 transition-colors hover:bg-white/5"
-          style={{ color: "var(--color-text-secondary)" }}
+        {/* User button / login badge */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+            background: "var(--neo-purple)",
+            color: "#ffffff",
+            border: "var(--border-medium)",
+            borderRadius: "var(--radius-pill)",
+            padding: "5px 16px 5px 6px",
+            boxShadow: "var(--shadow-sm)",
+            fontWeight: 700,
+            fontSize: "13px",
+            cursor: "pointer",
+          }}
         >
           <div
-            className="flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold"
-            style={{ background: "var(--color-brand-700)", color: "#93c5fd" }}
+            style={{
+              display: "flex",
+              height: "30px",
+              width: "30px",
+              alignItems: "center",
+              justifyContent: "center",
+              borderRadius: "50%",
+              background: "var(--neo-yellow)",
+              color: "#121212",
+              border: "1.5px solid #121212",
+              fontWeight: 900,
+              fontSize: "13px",
+            }}
           >
             {session?.user?.name?.[0]?.toUpperCase() ?? "U"}
           </div>
-          <span
-            className="hidden text-sm font-medium sm:block"
-            style={{ color: "var(--color-text-primary)" }}
-          >
-            {session?.user?.name ?? "Operator"}
-          </span>
-          <ChevronDown size={14} />
-        </button>
+          <span>{session?.user?.name ?? "Operator"}</span>
+        </div>
       </div>
     </header>
   );

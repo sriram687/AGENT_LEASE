@@ -8,47 +8,62 @@ interface EscalationAlertProps {
 export function EscalationAlert({ count }: EscalationAlertProps) {
   return (
     <div
-      className="flex items-center justify-between rounded-xl border px-5 py-4"
       style={{
-        background: "rgba(245,158,11,0.06)",
-        borderColor: "rgba(245,158,11,0.25)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        flexWrap: "wrap",
+        gap: "16px",
+        background: "#fef08a",
+        border: "var(--border-thick)",
+        borderRadius: "var(--radius-lg)",
+        padding: "16px 22px",
+        boxShadow: "var(--shadow-base)",
       }}
     >
-      <div className="flex items-center gap-3">
+      <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
         <div
-          className="flex h-8 w-8 items-center justify-center rounded-lg"
-          style={{ background: "rgba(245,158,11,0.12)" }}
+          style={{
+            display: "flex",
+            height: "40px",
+            width: "40px",
+            alignItems: "center",
+            justifyContent: "center",
+            borderRadius: "10px",
+            background: "#ffffff",
+            border: "var(--border-medium)",
+            boxShadow: "2px 2px 0px #121212",
+          }}
         >
-          <AlertTriangle size={16} color="#f59e0b" />
+          <AlertTriangle size={20} color="#b45309" strokeWidth={2.5} />
         </div>
         <div>
-          <p className="text-sm font-semibold" style={{ color: "#fbbf24" }}>
+          <p style={{ fontSize: "15px", fontWeight: 800, color: "#121212" }}>
             {count} purchase request{count > 1 ? "s" : ""} awaiting your review
           </p>
-          <p className="text-xs mt-0.5" style={{ color: "var(--color-text-secondary)" }}>
-            These will expire if not actioned within the mandate escalation window.
+          <p style={{ fontSize: "12px", fontWeight: 600, color: "#78350f", marginTop: "2px" }}>
+            Action required before expiration window elapses.
           </p>
         </div>
       </div>
+
       <Link
         href="/escalations"
-        className="btn btn-sm flex items-center gap-1.5"
+        className="btn"
         style={{
-          background: "rgba(245,158,11,0.12)",
-          color: "#fbbf24",
-          border: "1px solid rgba(245,158,11,0.3)",
-          borderRadius: "8px",
-          padding: "6px 14px",
-          fontSize: "12px",
-          fontWeight: 500,
+          background: "#121212",
+          color: "#ffffff",
+          padding: "8px 18px",
+          fontSize: "13px",
+          borderRadius: "var(--radius-pill)",
           display: "inline-flex",
           alignItems: "center",
-          gap: "6px",
+          gap: "8px",
           textDecoration: "none",
-          whiteSpace: "nowrap",
         }}
       >
-        Review now <ArrowRight size={13} />
+        <span>Review Escalations</span>
+        <ArrowRight size={15} strokeWidth={2.5} />
       </Link>
     </div>
   );

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { CheckCircle, XCircle, Clock, AlertTriangle } from "lucide-react";
+import { CheckCircle, XCircle, Clock, AlertTriangle, ShieldAlert } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { approveEscalation, rejectEscalation } from "@/lib/actions/escalations";
 import toast from "react-hot-toast";
@@ -39,18 +39,44 @@ export function EscalationInbox({ escalations }: EscalationInboxProps) {
 
   if (pending.length === 0) {
     return (
-      <div className="card flex flex-col items-center justify-center py-20 text-center">
-        <CheckCircle size={40} className="mb-3" style={{ color: "var(--color-approved)" }} />
-        <p className="text-sm font-medium text-gray-300">All caught up</p>
-        <p className="text-xs mt-1" style={{ color: "var(--color-text-muted)" }}>
-          No purchase requests are waiting for your review.
+      <div
+        className="card"
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "60px 20px",
+          textAlign: "center",
+          background: "#ffffff",
+        }}
+      >
+        <div
+          style={{
+            width: "56px",
+            height: "56px",
+            borderRadius: "50%",
+            background: "var(--neo-green-light)",
+            border: "var(--border-medium)",
+            boxShadow: "var(--shadow-sm)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            marginBottom: "16px",
+          }}
+        >
+          <CheckCircle size={30} color="#065f46" strokeWidth={2.5} />
+        </div>
+        <p style={{ fontSize: "18px", fontWeight: 900, color: "#121212" }}>All Caught Up!</p>
+        <p style={{ fontSize: "13px", fontWeight: 500, color: "#6b7280", marginTop: "4px" }}>
+          No purchase requests require human intervention right now.
         </p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
+    <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
       {pending.map((esc) => (
         <EscalationCard key={esc.id} escalation={esc} />
       ))}
@@ -93,136 +119,253 @@ function EscalationCard({ escalation: esc }: { escalation: EscalationItem }) {
   if (resolved) return null;
 
   return (
-    <div className="card-elevated rounded-xl overflow-hidden animate-fade-in">
-      {/* Top accent bar */}
-      <div className="h-1 w-full" style={{ background: "var(--color-escalated)" }} />
-
-      <div className="p-5">
-        {/* Header */}
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex items-start gap-3">
-            <div
-              className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
-              style={{ background: "rgba(245,158,11,0.1)" }}
-            >
-              <AlertTriangle size={16} color="#f59e0b" />
-            </div>
-            <div>
-              <p className="font-semibold text-gray-100 text-sm">
-                {esc.purchaseRequest.itemName}
-              </p>
-              <p className="text-xs mt-0.5" style={{ color: "var(--color-text-secondary)" }}>
+    <div
+      className="card"
+      style={{
+        background: "#ffffff",
+        padding: "24px",
+        display: "flex",
+        flexDirection: "column",
+        gap: "18px",
+      }}
+    >
+      {/* Header */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          flexWrap: "wrap",
+          gap: "14px",
+          borderBottom: "var(--border-thin)",
+          paddingBottom: "16px",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "flex-start", gap: "12px" }}>
+          <div
+            style={{
+              width: "42px",
+              height: "42px",
+              borderRadius: "10px",
+              background: "#fef08a",
+              border: "var(--border-medium)",
+              boxShadow: "var(--shadow-sm)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+            }}
+          >
+            <AlertTriangle size={20} color="#b45309" strokeWidth={2.5} />
+          </div>
+          <div>
+            <h3 style={{ fontSize: "17px", fontWeight: 800, color: "#121212" }}>
+              {esc.purchaseRequest.itemName}
+            </h3>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "3px" }}>
+              <span style={{ fontSize: "13px", fontWeight: 700, color: "#4f46e5" }}>
                 {esc.purchaseRequest.vendorName}
-                {esc.purchaseRequest.category ? ` · ${esc.purchaseRequest.category}` : ""}
-              </p>
+              </span>
+              {esc.purchaseRequest.category && (
+                <>
+                  <span style={{ color: "#9ca3af" }}>•</span>
+                  <span
+                    style={{
+                      background: "#f1f5f9",
+                      border: "1px solid #121212",
+                      borderRadius: "var(--radius-pill)",
+                      padding: "1px 8px",
+                      fontSize: "11px",
+                      fontWeight: 700,
+                    }}
+                  >
+                    {esc.purchaseRequest.category}
+                  </span>
+                </>
+              )}
             </div>
           </div>
+        </div>
 
-          <div className="text-right shrink-0">
-            <p className="text-lg font-semibold tabular-nums" style={{ color: "#fbbf24" }}>
-              {amount}
-            </p>
-            <p className="text-xs flex items-center gap-1 justify-end mt-0.5" style={{ color: "var(--color-text-muted)" }}>
-              <Clock size={11} />
-              Expires {expiresIn}
-            </p>
+        <div style={{ textAlign: "right" }}>
+          <div
+            style={{
+              fontSize: "24px",
+              fontWeight: 900,
+              color: "#121212",
+              fontVariantNumeric: "tabular-nums",
+            }}
+          >
+            {amount}
+          </div>
+          <div
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "4px",
+              fontSize: "11px",
+              fontWeight: 700,
+              color: "#b45309",
+              background: "#fef3c7",
+              border: "1px solid #121212",
+              borderRadius: "var(--radius-pill)",
+              padding: "2px 8px",
+              marginTop: "4px",
+            }}
+          >
+            <Clock size={11} strokeWidth={2.5} />
+            Expires {expiresIn}
           </div>
         </div>
+      </div>
 
-        {/* Agent justification */}
+      {/* Justifications in Neo-Brutalist boxes */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "14px" }}>
         <div
-          className="mt-4 rounded-lg p-3 text-xs"
-          style={{ background: "var(--color-surface-0)", borderLeft: "3px solid var(--color-surface-3)", color: "var(--color-text-secondary)" }}
+          style={{
+            background: "#f8faf5",
+            border: "var(--border-medium)",
+            borderRadius: "var(--radius-md)",
+            padding: "14px 16px",
+            boxShadow: "var(--shadow-sm)",
+          }}
         >
-          <p className="font-medium mb-1 uppercase tracking-wide text-gray-400" style={{ fontSize: "10px" }}>
-            Agent justification
+          <div
+            style={{
+              fontSize: "11px",
+              fontWeight: 800,
+              textTransform: "uppercase",
+              letterSpacing: "0.06em",
+              color: "#121212",
+              marginBottom: "6px",
+            }}
+          >
+            🤖 Agent Justification
+          </div>
+          <p style={{ fontSize: "13px", fontWeight: 500, color: "#374151" }}>
+            {esc.purchaseRequest.justification}
           </p>
-          {esc.purchaseRequest.justification}
         </div>
 
-        {/* Leash reasoning */}
-        <div className="mt-3">
-          <p className="text-xs font-medium uppercase tracking-wide mb-1.5" style={{ color: "var(--color-text-muted)", fontSize: "10px" }}>
-            Leash reasoning
-          </p>
-          <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
+        <div
+          style={{
+            background: "#f8faf5",
+            border: "var(--border-medium)",
+            borderRadius: "var(--radius-md)",
+            padding: "14px 16px",
+            boxShadow: "var(--shadow-sm)",
+          }}
+        >
+          <div
+            style={{
+              fontSize: "11px",
+              fontWeight: 800,
+              textTransform: "uppercase",
+              letterSpacing: "0.06em",
+              color: "#121212",
+              marginBottom: "6px",
+            }}
+          >
+            ⚖️ Policy Decision Reasoning
+          </div>
+          <p style={{ fontSize: "13px", fontWeight: 500, color: "#374151" }}>
             {esc.leashReasoning}
           </p>
         </div>
+      </div>
 
-        {/* Risk flags */}
-        {esc.decision?.llmRiskFlags && esc.decision.llmRiskFlags.length > 0 && (
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {esc.decision.llmRiskFlags.map((flag) => (
-              <span
-                key={flag}
-                className="rounded-full px-2.5 py-0.5 text-xs font-medium"
-                style={{ background: "rgba(239,68,68,0.08)", color: "#f87171" }}
-              >
-                {flag}
-              </span>
-            ))}
-          </div>
-        )}
-
-        {/* Comment input */}
-        <div className="mt-4">
-          <label
-            htmlFor={`comment-${esc.id}`}
-            className="label"
-          >
-            Your comment (optional)
-          </label>
-          <textarea
-            id={`comment-${esc.id}`}
-            className="input resize-none"
-            rows={2}
-            placeholder="Add a note explaining your decision…"
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            disabled={isPending}
-          />
+      {/* Risk flags */}
+      {esc.decision?.llmRiskFlags && esc.decision.llmRiskFlags.length > 0 && (
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+          <span style={{ fontSize: "11px", fontWeight: 800, textTransform: "uppercase", color: "#991b1b" }}>
+            Flagged:
+          </span>
+          {esc.decision.llmRiskFlags.map((flag) => (
+            <span
+              key={flag}
+              style={{
+                background: "#fee2e2",
+                color: "#991b1b",
+                border: "1.5px solid #121212",
+                borderRadius: "var(--radius-pill)",
+                padding: "2px 10px",
+                fontSize: "11px",
+                fontWeight: 800,
+                boxShadow: "1.5px 1.5px 0px #121212",
+              }}
+            >
+              {flag}
+            </span>
+          ))}
         </div>
+      )}
 
-        {/* Actions */}
-        <div className="mt-4 flex items-center gap-3">
-          <button
-            id={`approve-${esc.id}`}
-            onClick={handleApprove}
-            disabled={isPending}
-            className="btn btn-sm flex items-center gap-1.5"
-            style={{
-              background: "rgba(34,197,94,0.1)",
-              color: "#4ade80",
-              border: "1px solid rgba(34,197,94,0.25)",
-              borderRadius: "8px",
-              padding: "7px 16px",
-              fontSize: "12.5px",
-              fontWeight: 500,
-            }}
-          >
-            <CheckCircle size={13} />
-            Approve
-          </button>
-          <button
-            id={`reject-${esc.id}`}
-            onClick={handleReject}
-            disabled={isPending}
-            className="btn btn-sm flex items-center gap-1.5"
-            style={{
-              background: "rgba(239,68,68,0.08)",
-              color: "#f87171",
-              border: "1px solid rgba(239,68,68,0.2)",
-              borderRadius: "8px",
-              padding: "7px 16px",
-              fontSize: "12.5px",
-              fontWeight: 500,
-            }}
-          >
-            <XCircle size={13} />
-            Reject
-          </button>
-        </div>
+      {/* Operator Comment Box */}
+      <div>
+        <label
+          htmlFor={`comment-${esc.id}`}
+          style={{
+            display: "block",
+            fontSize: "12px",
+            fontWeight: 800,
+            color: "#121212",
+            textTransform: "uppercase",
+            marginBottom: "6px",
+          }}
+        >
+          Operator Note (optional)
+        </label>
+        <textarea
+          id={`comment-${esc.id}`}
+          className="input"
+          style={{
+            borderRadius: "var(--radius-md)",
+            width: "100%",
+            resize: "vertical",
+            minHeight: "60px",
+          }}
+          rows={2}
+          placeholder="Add an audit note explaining your decision…"
+          value={comment}
+          onChange={(e) => setComment(e.target.value)}
+          disabled={isPending}
+        />
+      </div>
+
+      {/* Action Buttons */}
+      <div style={{ display: "flex", alignItems: "center", gap: "12px", paddingTop: "6px" }}>
+        <button
+          id={`approve-${esc.id}`}
+          onClick={handleApprove}
+          disabled={isPending}
+          className="btn"
+          style={{
+            background: "var(--neo-green-light)",
+            color: "#064e3b",
+            padding: "8px 20px",
+            fontSize: "13px",
+            borderRadius: "var(--radius-pill)",
+          }}
+        >
+          <CheckCircle size={16} strokeWidth={2.5} />
+          <span>Approve & Authorize</span>
+        </button>
+        <button
+          id={`reject-${esc.id}`}
+          onClick={handleReject}
+          disabled={isPending}
+          className="btn"
+          style={{
+            background: "#fee2e2",
+            color: "#991b1b",
+            padding: "8px 20px",
+            fontSize: "13px",
+            borderRadius: "var(--radius-pill)",
+          }}
+        >
+          <XCircle size={16} strokeWidth={2.5} />
+          <span>Reject Request</span>
+        </button>
       </div>
     </div>
   );

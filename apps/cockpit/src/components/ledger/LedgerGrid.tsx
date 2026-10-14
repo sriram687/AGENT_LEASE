@@ -31,22 +31,32 @@ interface LedgerGridProps {
 }
 
 function StatusCellRenderer({ value }: ICellRendererParams) {
-  const colorMap: Record<string, string> = {
-    DECISION_MADE: "#60a5fa",
-    PAYMENT_AUTHORIZED: "#22c55e",
-    PAYMENT_CAPTURED: "#8b5cf6",
-    PAYMENT_VOIDED: "#ef4444",
-    ESCALATION_CREATED: "#f59e0b",
-    ESCALATION_RESOLVED: "#34d399",
-    MANDATE_REVOKED: "#ef4444",
-    KILL_SWITCH_ACTIVATED: "#ef4444",
-    REQUEST_RECEIVED: "#94a3b8",
+  const colorMap: Record<string, { bg: string; text: string }> = {
+    DECISION_MADE: { bg: "#e0f2fe", text: "#0369a1" },
+    PAYMENT_AUTHORIZED: { bg: "#dcfce7", text: "#15803d" },
+    PAYMENT_CAPTURED: { bg: "#ede9fe", text: "#6d28d9" },
+    PAYMENT_VOIDED: { bg: "#fee2e2", text: "#b91c1c" },
+    ESCALATION_CREATED: { bg: "#fef3c7", text: "#b45309" },
+    ESCALATION_RESOLVED: { bg: "#d1fae5", text: "#047857" },
+    MANDATE_REVOKED: { bg: "#fee2e2", text: "#b91c1c" },
+    KILL_SWITCH_ACTIVATED: { bg: "#fecaca", text: "#991b1b" },
+    REQUEST_RECEIVED: { bg: "#f1f5f9", text: "#334155" },
   };
-  const color = colorMap[value as string] ?? "#94a3b8";
+  const color = colorMap[value as string] ?? { bg: "#f1f5f9", text: "#334155" };
   return (
     <span
-      className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium"
-      style={{ background: `${color}18`, color }}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        padding: "2px 10px",
+        borderRadius: "var(--radius-pill)",
+        fontSize: "11px",
+        fontWeight: 800,
+        background: color.bg,
+        color: color.text,
+        border: "1px solid #121212",
+        boxShadow: "1px 1px 0px #121212",
+      }}
     >
       {value}
     </span>
@@ -56,8 +66,16 @@ function StatusCellRenderer({ value }: ICellRendererParams) {
 function HashCellRenderer({ value }: ICellRendererParams) {
   return (
     <span
-      className="font-mono text-xs"
-      style={{ color: "var(--color-text-muted)" }}
+      style={{
+        fontFamily: "var(--font-mono)",
+        fontSize: "11px",
+        fontWeight: 600,
+        color: "#4b5563",
+        background: "#f8faf5",
+        padding: "2px 6px",
+        borderRadius: "4px",
+        border: "1px solid #e2e8f0",
+      }}
       title={value as string}
     >
       {String(value).slice(0, 12)}…
@@ -67,7 +85,7 @@ function HashCellRenderer({ value }: ICellRendererParams) {
 
 function TimeCellRenderer({ value }: ICellRendererParams) {
   return (
-    <span className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
+    <span style={{ fontSize: "12px", fontWeight: 600, color: "#4b5563" }}>
       {formatDistanceToNow(new Date(value as string), { addSuffix: true })}
     </span>
   );
@@ -83,7 +101,7 @@ export function LedgerGrid({ rows, chainValid }: LedgerGridProps) {
         headerName: "#",
         width: 70,
         pinned: "left",
-        cellStyle: { color: "var(--color-text-muted)", fontVariantNumeric: "tabular-nums" },
+        cellStyle: { fontWeight: "bold", color: "#121212", fontVariantNumeric: "tabular-nums" },
       },
       {
         field: "entryType",
@@ -95,7 +113,7 @@ export function LedgerGrid({ rows, chainValid }: LedgerGridProps) {
         field: "actorType",
         headerName: "Actor",
         width: 90,
-        cellStyle: { color: "var(--color-text-secondary)", fontSize: "12px" },
+        cellStyle: { fontWeight: 600, color: "#121212", fontSize: "12px" },
       },
       {
         field: "actorId",
@@ -107,7 +125,7 @@ export function LedgerGrid({ rows, chainValid }: LedgerGridProps) {
         field: "entityType",
         headerName: "Entity",
         width: 130,
-        cellStyle: { color: "var(--color-text-secondary)", fontSize: "12px" },
+        cellStyle: { fontWeight: 600, color: "#121212", fontSize: "12px" },
       },
       {
         field: "entityId",
@@ -152,29 +170,53 @@ export function LedgerGrid({ rows, chainValid }: LedgerGridProps) {
   }, []);
 
   return (
-    <div className="card overflow-hidden">
-      <div className="flex items-center justify-between border-b px-5 py-4" style={{ borderColor: "var(--color-border)" }}>
+    <div className="card" style={{ overflow: "hidden", padding: 0 }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          borderBottom: "var(--border-thick)",
+          padding: "16px 22px",
+          background: "#ffffff",
+        }}
+      >
         <div>
-          <h3 className="text-sm font-semibold text-gray-200">Append-Only Ledger</h3>
-          <p className="text-xs mt-0.5" style={{ color: "var(--color-text-muted)" }}>
-            SHA-256 hash-chained — every entry is tamper-evident
+          <h3 style={{ fontSize: "15px", fontWeight: 800, color: "#121212" }}>
+            APPEND-ONLY LEDGER ENTRIES
+          </h3>
+          <p style={{ fontSize: "12px", fontWeight: 500, color: "#6b7280", marginTop: "2px" }}>
+            SHA-256 hash-chained — tamper-evident audit records
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            background: chainValid ? "var(--neo-green-light)" : "#fee2e2",
+            border: "1.5px solid #121212",
+            borderRadius: "var(--radius-pill)",
+            padding: "4px 12px",
+            fontSize: "11px",
+            fontWeight: 800,
+            color: chainValid ? "#064e3b" : "#991b1b",
+          }}
+        >
           <span
-            className={`h-2 w-2 rounded-full ${chainValid ? "chain-valid" : "chain-broken"}`}
-            style={{ background: chainValid ? "var(--color-approved)" : "var(--color-denied)" }}
+            style={{
+              height: "7px",
+              width: "7px",
+              borderRadius: "50%",
+              background: chainValid ? "#059669" : "#dc2626",
+            }}
           />
-          <span
-            className={`text-xs font-medium ${chainValid ? "chain-valid" : "chain-broken"}`}
-          >
-            {chainValid ? "Chain intact" : "Chain broken — investigate"}
-          </span>
+          {chainValid ? "Chain intact" : "Chain broken — investigate"}
         </div>
       </div>
       <div
-        className="ag-theme-alpine-dark"
-        style={{ height: 480, width: "100%" }}
+        className="ag-theme-alpine"
+        style={{ height: 480, width: "100%", border: "none" }}
       >
         <AgGridReact
           ref={gridRef}
@@ -182,8 +224,8 @@ export function LedgerGrid({ rows, chainValid }: LedgerGridProps) {
           columnDefs={columnDefs}
           defaultColDef={defaultColDef}
           onGridReady={onGridReady}
-          rowHeight={40}
-          headerHeight={40}
+          rowHeight={44}
+          headerHeight={44}
           animateRows={true}
           suppressCellFocus={true}
           enableCellTextSelection={true}

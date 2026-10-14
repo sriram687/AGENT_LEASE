@@ -1,14 +1,15 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "react-hot-toast";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { TopBar } from "@/components/layout/TopBar";
 import { SessionProvider } from "@/components/auth/SessionProvider";
 
-const inter = Inter({
+const jakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
-  variable: "--font-inter",
+  weight: ["400", "500", "600", "700", "800"],
+  variable: "--font-main",
 });
 
 export const metadata: Metadata = {
@@ -29,23 +30,26 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={inter.variable}>
-      <body className="bg-gray-950 text-gray-100 antialiased">
+    <html lang="en" className={jakarta.variable}>
+      <body style={{ backgroundColor: "var(--color-canvas)", color: "var(--color-ink-primary)" }}>
         <SessionProvider>
-          <div className="flex h-screen overflow-hidden">
+          <div style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
             <Sidebar />
-            <div className="flex flex-1 flex-col overflow-hidden">
+            <div style={{ display: "flex", flex: 1, flexDirection: "column", overflow: "hidden", minWidth: 0 }}>
               <TopBar />
-              <main className="flex-1 overflow-y-auto p-6">{children}</main>
+              <main style={{ flex: 1, overflowY: "auto", padding: "28px" }}>{children}</main>
             </div>
           </div>
           <Toaster
             position="top-right"
             toastOptions={{
               style: {
-                background: "#1f2937",
-                color: "#f9fafb",
-                border: "1px solid #374151",
+                background: "#ffffff",
+                color: "#121212",
+                border: "2.5px solid #121212",
+                borderRadius: "12px",
+                fontWeight: 600,
+                boxShadow: "4px 4px 0px #121212",
               },
             }}
           />

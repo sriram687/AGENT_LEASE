@@ -12,7 +12,6 @@ import {
   Settings,
   Zap,
 } from "lucide-react";
-import clsx from "clsx";
 
 const NAV = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -29,50 +28,113 @@ export function Sidebar() {
 
   return (
     <aside
-      className="flex h-full w-60 flex-col border-r"
       style={{
-        background: "var(--color-surface-1)",
-        borderColor: "var(--color-border)",
+        display: "flex",
+        height: "100%",
+        width: "250px",
+        flexDirection: "column",
+        background: "#ffffff",
+        borderRight: "var(--border-thick)",
+        flexShrink: 0,
       }}
     >
-      {/* Logo */}
-      <div className="flex items-center gap-3 px-5 py-5 border-b" style={{ borderColor: "var(--color-border)" }}>
+      {/* Brand Logo Banner */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "12px",
+          padding: "20px",
+          borderBottom: "var(--border-thick)",
+          background: "#ffffff",
+        }}
+      >
         <div
-          className="flex h-8 w-8 items-center justify-center rounded-lg"
-          style={{ background: "var(--color-brand-600)" }}
+          style={{
+            display: "flex",
+            height: "40px",
+            width: "40px",
+            alignItems: "center",
+            justifyContent: "center",
+            borderRadius: "10px",
+            background: "var(--neo-yellow)",
+            border: "var(--border-medium)",
+            boxShadow: "2px 2px 0px #121212",
+          }}
         >
-          <Zap size={16} color="#fff" />
+          <Zap size={22} color="#121212" strokeWidth={2.5} />
         </div>
         <div>
-          <div className="text-sm font-semibold text-gray-50">Agent Leash</div>
-          <div className="text-xs" style={{ color: "var(--color-text-muted)" }}>
+          <div style={{ fontSize: "16px", fontWeight: 800, color: "#121212", letterSpacing: "-0.02em" }}>
+            AGENT LEASH
+          </div>
+          <div
+            style={{
+              fontSize: "11px",
+              fontWeight: 700,
+              color: "#4f46e5",
+              textTransform: "uppercase",
+              letterSpacing: "0.06em",
+            }}
+          >
             Payment Gateway
           </div>
         </div>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
+      <nav
+        style={{
+          flex: 1,
+          overflowY: "auto",
+          padding: "16px 12px",
+          display: "flex",
+          flexDirection: "column",
+          gap: "8px",
+        }}
+      >
         {NAV.map(({ href, label, icon: Icon, badge }) => {
           const active = pathname === href || (href !== "/" && pathname.startsWith(href));
           return (
             <Link
               key={href}
               href={href}
-              className={clsx(
-                "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all",
-                active
-                  ? "bg-blue-600/10 text-blue-400 border border-blue-600/20"
-                  : "text-gray-400 hover:text-gray-200 hover:bg-white/5"
-              )}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+                padding: "10px 14px",
+                borderRadius: "var(--radius-pill)",
+                fontSize: "14px",
+                fontWeight: active ? 800 : 600,
+                color: active ? "#ffffff" : "#121212",
+                background: active ? "var(--neo-purple)" : "transparent",
+                border: active ? "var(--border-medium)" : "2px solid transparent",
+                boxShadow: active ? "var(--shadow-sm)" : "none",
+                textDecoration: "none",
+                transition: "all 0.15s ease",
+              }}
             >
-              <Icon size={16} strokeWidth={active ? 2.5 : 1.5} />
-              <span className="flex-1">{label}</span>
+              <Icon size={18} strokeWidth={active ? 2.5 : 2} />
+              <span style={{ flex: 1 }}>{label}</span>
               {badge && (
                 <span
-                  className="h-2 w-2 rounded-full animate-pulse"
-                  style={{ background: "var(--color-escalated)" }}
-                />
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    padding: "2px 8px",
+                    borderRadius: "var(--radius-pill)",
+                    fontSize: "10px",
+                    fontWeight: 900,
+                    background: active ? "#ffffff" : "var(--neo-yellow)",
+                    color: "#121212",
+                    border: "1.5px solid #121212",
+                    boxShadow: "1px 1px 0px #121212",
+                  }}
+                >
+                  LIVE
+                </span>
               )}
             </Link>
           );
@@ -80,18 +142,36 @@ export function Sidebar() {
       </nav>
 
       {/* Sandbox environment badge */}
-      <div className="px-4 py-4 border-t" style={{ borderColor: "var(--color-border)" }}>
+      <div
+        style={{
+          padding: "16px",
+          borderTop: "var(--border-thick)",
+          background: "#f8faf5",
+        }}
+      >
         <div
-          className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium"
           style={{
-            background: "rgba(245,158,11,0.08)",
-            border: "1px solid rgba(245,158,11,0.2)",
-            color: "#f59e0b",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            borderRadius: "var(--radius-pill)",
+            padding: "8px 14px",
+            fontSize: "12px",
+            fontWeight: 800,
+            background: "var(--neo-yellow)",
+            border: "var(--border-medium)",
+            boxShadow: "var(--shadow-sm)",
+            color: "#121212",
           }}
         >
           <span
-            className="h-1.5 w-1.5 rounded-full"
-            style={{ background: "#f59e0b" }}
+            style={{
+              height: "8px",
+              width: "8px",
+              borderRadius: "50%",
+              background: "#121212",
+              display: "inline-block",
+            }}
           />
           PayPal Sandbox
         </div>
