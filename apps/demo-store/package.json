@@ -10,14 +10,15 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@hono/node-server": "^2.1.5",
     "@leash/types": "workspace:*",
     "@paypal/paypal-server-sdk": "^0.6.1",
     "hono": "^4.4.0",
     "zod": "^3.23.0"
   },
   "devDependencies": {
+    "@types/node": "^20.14.0",
     "tsx": "^4.15.0",
-    "typescript": "^5.4.5",
-    "@types/node": "^20.14.0"
+    "typescript": "^5.4.5"
   }
 }

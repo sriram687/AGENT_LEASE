@@ -14,7 +14,8 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import OpenAI from "openai";
 
-const openai = new OpenAI({ apiKey: process.env["OPENAI_API_KEY"] });
+const apiKey = process.env["OPENAI_API_KEY"];
+const openai = apiKey ? new OpenAI({ apiKey }) : null;
 
 const LEASH_GATEWAY_URL = process.env["LEASH_GATEWAY_URL"] ?? "http://localhost:3000";
 const AGENT_API_KEY = process.env["LEASH_AGENT_API_KEY"] ?? "";
