@@ -5,6 +5,7 @@ import { users } from "@leash/db";
 import { eq } from "drizzle-orm";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  secret: process.env["NEXTAUTH_SECRET"] ?? "fallback-development-secret-for-leash-cockpit",
   providers: [
     Credentials({
       name: "Credentials",
