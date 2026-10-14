@@ -69,7 +69,7 @@ export async function runSemanticDedup(
     LIMIT 1
   `);
 
-  const topMatch = results.rows[0] as
+  const topMatch = results[0] as
     | { id: string; similarity: number; amount_cents: number }
     | undefined;
 
@@ -90,7 +90,7 @@ export async function runSemanticDedup(
         AND 1 - (pr.item_embedding::vector <=> ${JSON.stringify(embedding)}::vector) >= ${threshold}
     `);
     const existingClusterTotal = Number(
-      (clusterTotal.rows[0] as { cluster_total: number } | undefined)
+      (clusterTotal[0] as { cluster_total: number } | undefined)
         ?.cluster_total ?? 0
     );
     if (
