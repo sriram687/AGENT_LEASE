@@ -7,7 +7,7 @@ import {
   jsonb,
   varchar,
 } from "drizzle-orm/pg-core";
-import { purchaseRequests } from "./purchase-requests.js";
+import { purchaseRequests } from "./purchase-requests";
 
 export const deliveryEventType = pgEnum("delivery_event_type", [
   "TRACKING_ADDED",

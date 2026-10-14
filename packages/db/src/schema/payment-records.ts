@@ -7,7 +7,7 @@ import {
   pgEnum,
   varchar,
 } from "drizzle-orm/pg-core";
-import { purchaseRequests } from "./purchase-requests.js";
+import { purchaseRequests } from "./purchase-requests";
 
 export const paymentRecordStatus = pgEnum("payment_record_status", [
   "AUTHORIZED",

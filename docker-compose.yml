@@ -1,0 +1,53 @@
+# --- Agent Leash - Local Dev Stack -------------------------------------------
+# Starts infrastructure services only (Postgres + Redis).
+# App services (gateway, cockpit, demo-store, demo-agent) still run via pnpm dev.
+#
+# Usage:
+#   docker compose up -d          -> start DB + Redis in background
+#   docker compose down           -> stop everything
+#   docker compose down -v        -> stop + delete all data (fresh start)
+# -----------------------------------------------------------------------------
+
+services:
+
+  # -- PostgreSQL 16 with pgvector pre-installed -------------------------------
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: agent-leash-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: agent_leash
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d agent_leash"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # -- Redis (BullMQ job queues) -----------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: agent-leash-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+    name: agent_leash_postgres
+  redis_data:
+    name: agent_leash_redis

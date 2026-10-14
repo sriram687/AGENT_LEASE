@@ -8,7 +8,7 @@ import {
   pgEnum,
   jsonb,
 } from "drizzle-orm/pg-core";
-import { purchaseRequests } from "./purchase-requests.js";
+import { purchaseRequests } from "./purchase-requests";
 
 export const decisionVerdict = pgEnum("decision_verdict", [
   "APPROVED",

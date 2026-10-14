@@ -10,8 +10,8 @@ import {
   pgEnum,
   jsonb,
 } from "drizzle-orm/pg-core";
-import { users } from "./users.js";
-import { agents } from "./agents.js";
+import { users } from "./users";
+import { agents } from "./agents";
 
 export const captureMode = pgEnum("capture_mode", [
   "immediate",

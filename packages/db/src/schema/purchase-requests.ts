@@ -8,8 +8,8 @@ import {
   jsonb,
   varchar,
 } from "drizzle-orm/pg-core";
-import { mandates } from "./mandates.js";
-import { agents } from "./agents.js";
+import { mandates } from "./mandates";
+import { agents } from "./agents";
 
 export const purchaseRequestStatus = pgEnum("purchase_request_status", [
   "REQUESTED",

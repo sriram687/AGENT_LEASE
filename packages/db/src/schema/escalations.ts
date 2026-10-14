@@ -5,8 +5,8 @@ import {
   timestamp,
   pgEnum,
 } from "drizzle-orm/pg-core";
-import { purchaseRequests } from "./purchase-requests.js";
-import { users } from "./users.js";
+import { purchaseRequests } from "./purchase-requests";
+import { users } from "./users";
 
 export const escalationStatus = pgEnum("escalation_status", [
   "PENDING",
