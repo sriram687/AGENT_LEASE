@@ -1,11 +1,8 @@
-"use client";
+﻿"use client";
 
-import { useState } from "react";
-import {
-  createVaultSetupToken,
-  saveVaultPaymentToken,
-} from "@/lib/actions/paypal";
-import { CheckCircle2, Shield, AlertCircle, RefreshCw, Wallet } from "lucide-react";
+import { useState, useEffect } from "react";
+import { getPayPalAuthUrl, exchangePayPalCode, disconnectWallet } from "@/lib/actions/paypal";
+import { CheckCircle2, Shield, Wallet, RefreshCw, Unlink, LogIn } from "lucide-react";
 import toast from "react-hot-toast";
 
 interface PayPalVaultButtonProps {
@@ -14,107 +11,165 @@ interface PayPalVaultButtonProps {
   clientId: string;
 }
 
-export function PayPalVaultButton({
-  initialConnected,
-  initialVaultId,
-  clientId,
-}: PayPalVaultButtonProps) {
+export function PayPalVaultButton({ initialConnected, initialVaultId, clientId }: PayPalVaultButtonProps) {
   const [connected, setConnected] = useState(initialConnected);
   const [vaultId, setVaultId] = useState(initialVaultId);
   const [loading, setLoading] = useState(false);
 
+  // Handle return from PayPal OAuth redirect
+  // PayPal redirects: /settings?vault=success&code=<AUTH_CODE>
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const result = params.get("vault");
+    const code = params.get("code");
+
+    if (result === "success" && code && !connected) {
+      setLoading(true);
+      toast.loading("Completing PayPal connection...", { id: "paypal-exchange" });
+      exchangePayPalCode(code).then((res) => {
+        toast.dismiss("paypal-exchange");
+        if (res.success && res.refreshToken) {
+          setConnected(true);
+          setVaultId(res.refreshToken);
+          toast.success(
+            res.email
+              ? `PayPal connected: ${res.email}`
+              : "PayPal Wallet connected successfully!"
+          );
+        } else {
+          toast.error("Connection failed: " + (res.error ?? "unknown error"));
+        }
+        setLoading(false);
+        window.history.replaceState({}, "", "/settings");
+      });
+    } else if (result === "cancelled") {
+      toast("PayPal connection was cancelled.", { icon: "❌" });
+      window.history.replaceState({}, "", "/settings");
+    }
+  }, []);
+
   const handleConnect = async () => {
     setLoading(true);
     try {
-      // Step 1: Create PayPal Setup Token on backend
-      const res = await createVaultSetupToken();
-      if (!res.success || !res.setupToken) {
-        toast.error(res.error ?? "Failed to initialize PayPal Vault flow");
+      // Generate the PayPal OAuth Connect URL
+      const res = await getPayPalAuthUrl();
+      if (!res.success || !res.authUrl) {
+        toast.error(res.error ?? "Failed to generate PayPal auth URL");
         setLoading(false);
         return;
       }
 
-      const setupToken = res.setupToken;
-
-      // Step 2: Open PayPal Vault Approval Window using the official HATEOAS approve link
-      const approvalUrl =
-        res.approveUrl ??
-        `https://www.sandbox.paypal.com/checkoutnow?approval_prompt=auto&token=${setupToken}`;
-
-      const width = 500;
-      const height = 700;
+      // Open PayPal Login popup
+      // URL: https://www.sandbox.paypal.com/connect?...&scope=futurepayments
+      // User sees real PayPal login + consent screen — no special merchant setup needed
+      const width = 500, height = 680;
       const left = window.screenX + (window.outerWidth - width) / 2;
       const top = window.screenY + (window.outerHeight - height) / 2;
 
       const popup = window.open(
-        approvalUrl,
-        "PayPalVaultPopup",
-        `width=${width},height=${height},left=${left},top=${top},status=no,toolbar=no,menubar=no`
+        res.authUrl,
+        "PayPalLogin",
+        `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no,status=no`
       );
 
-      toast("Complete authentication in the PayPal window...", {
-        icon: "🔐",
-        duration: 8000,
+      if (!popup) {
+        // Popup blocked — full page redirect
+        window.location.href = res.authUrl;
+        return;
+      }
+
+      toast("Log in with your PayPal sandbox account in the popup...", {
+        icon: "🔐", duration: 30000, id: "paypal-popup",
       });
 
-      // Poll for popup closure
+      // Poll until PayPal redirects back to our domain with auth code
       const timer = setInterval(async () => {
-        if (!popup || popup.closed) {
-          clearInterval(timer);
-          // Step 3: Exchange setup token for permanent vault payment token
-          const saveRes = await saveVaultPaymentToken(setupToken);
-          if (saveRes.success && saveRes.vaultId) {
-            setConnected(true);
-            setVaultId(saveRes.vaultId);
-            toast.success("PayPal Wallet successfully connected to Agent Leash!");
-          } else {
-            // Graceful Sandbox Fallback when PayPal Sandbox regional agreement throws genericError
-            const fallbackToken = `vault_sb_linked_${setupToken.slice(-8)}`;
-            await saveVaultPaymentToken(fallbackToken);
-            setConnected(true);
-            setVaultId(fallbackToken);
-            toast.success("PayPal Sandbox Wallet linked successfully!");
+        try {
+          if (popup.closed) {
+            clearInterval(timer);
+            toast.dismiss("paypal-popup");
+            toast.error("PayPal window was closed. Please try again.");
+            setLoading(false);
+            return;
           }
-          setLoading(false);
+
+          // Will throw cross-origin error while on paypal.com — that is expected
+          const href = popup.location.href;
+
+          if (href.includes("/settings?vault=success")) {
+            clearInterval(timer);
+            toast.dismiss("paypal-popup");
+
+            const popupParams = new URLSearchParams(popup.location.search);
+            const code = popupParams.get("code");
+            popup.close();
+
+            if (!code) {
+              toast.error("No authorization code received from PayPal.");
+              setLoading(false);
+              return;
+            }
+
+            toast.loading("Completing PayPal connection...", { id: "paypal-exchange" });
+            const exchangeRes = await exchangePayPalCode(code);
+            toast.dismiss("paypal-exchange");
+
+            if (exchangeRes.success && exchangeRes.refreshToken) {
+              setConnected(true);
+              setVaultId(exchangeRes.refreshToken);
+              toast.success(
+                exchangeRes.email
+                  ? `✅ PayPal connected: ${exchangeRes.email}`
+                  : "✅ PayPal Wallet connected!"
+              );
+            } else {
+              toast.error("Failed: " + (exchangeRes.error ?? "unknown"));
+            }
+            setLoading(false);
+
+          } else if (href.includes("/settings?vault=cancelled")) {
+            clearInterval(timer);
+            toast.dismiss("paypal-popup");
+            popup.close();
+            toast("PayPal connection was cancelled.", { icon: "❌" });
+            setLoading(false);
+          }
+        } catch (_) {
+          // Still on paypal.com domain (cross-origin) — keep polling
+          if (popup.closed) {
+            clearInterval(timer);
+            toast.dismiss("paypal-popup");
+            toast.error("PayPal window closed. Please try again.");
+            setLoading(false);
+          }
         }
-      }, 1500);
+      }, 500);
+
     } catch (err: any) {
-      console.error(err);
-      toast.error(err.message ?? "Unexpected connection error");
+      toast.error(err.message ?? "Unexpected error");
       setLoading(false);
     }
   };
 
   return (
-    <div
-      style={{
-        background: "#ffffff",
-        border: "var(--border-thick)",
-        borderRadius: "var(--radius-lg)",
-        padding: "24px",
-        boxShadow: "var(--shadow-base)",
-        maxWidth: "600px",
-      }}
-    >
-      <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "16px" }}>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            width: "44px",
-            height: "44px",
-            borderRadius: "10px",
-            background: connected ? "var(--neo-green)" : "var(--neo-yellow)",
-            border: "var(--border-medium)",
-            boxShadow: "2px 2px 0px #121212",
-          }}
-        >
-          {connected ? (
-            <CheckCircle2 size={24} color="#121212" />
-          ) : (
-            <Wallet size={24} color="#121212" />
-          )}
+    <div style={{
+      background: "#ffffff",
+      border: "var(--border-thick)",
+      borderRadius: "var(--radius-lg)",
+      padding: "24px",
+      boxShadow: "var(--shadow-base)",
+      maxWidth: "600px",
+    }}>
+      {/* Header */}
+      <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px" }}>
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "center",
+          width: "44px", height: "44px", borderRadius: "10px",
+          background: connected ? "var(--neo-green)" : "var(--neo-yellow)",
+          border: "var(--border-medium)", boxShadow: "2px 2px 0px #121212",
+        }}>
+          {connected ? <CheckCircle2 size={24} color="#121212" /> : <Wallet size={24} color="#121212" />}
         </div>
         <div>
           <h3 style={{ fontSize: "18px", fontWeight: 800, color: "#121212", margin: 0 }}>
@@ -122,144 +177,75 @@ export function PayPalVaultButton({
           </h3>
           <p style={{ fontSize: "13px", color: "var(--color-ink-muted)", margin: "2px 0 0 0" }}>
             {connected
-              ? "Autonomous purchases will use this vaulted payment token."
-              : "Authorize Agent Leash once with your sandbox buyer wallet."}
+              ? "Autonomous payments authorized via PayPal OAuth."
+              : "Log in with your PayPal sandbox account to authorize Agent Leash."}
           </p>
         </div>
       </div>
 
       {connected ? (
-        <div
-          style={{
-            background: "#f8fafc",
-            border: "1.5px solid #cbd5e1",
-            borderRadius: "8px",
-            padding: "16px",
-            display: "flex",
-            flexDirection: "column",
-            gap: "8px",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <span style={{ fontSize: "12px", fontWeight: 700, color: "#64748b" }}>
-              VAULT TOKEN ID
-            </span>
-            <span
-              style={{
-                fontFamily: "var(--font-mono)",
-                fontSize: "12px",
-                background: "#e2e8f0",
-                padding: "2px 8px",
-                borderRadius: "4px",
-                fontWeight: 600,
-              }}
-            >
-              {vaultId ? `${vaultId.slice(0, 12)}...${vaultId.slice(-6)}` : "Active"}
-            </span>
+        <div style={{
+          background: "#f0fdf4", border: "1.5px solid #86efac",
+          borderRadius: "8px", padding: "16px",
+          display: "flex", flexDirection: "column", gap: "10px",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "#15803d", fontSize: "13px", fontWeight: 700 }}>
+            <Shield size={16} /> PayPal OAuth authorized — ready for autonomous payments
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "#16a34a", fontSize: "13px", fontWeight: 700 }}>
-            <Shield size={16} /> Ready for Least-Privilege Autonomous Checkout
+          <div style={{ fontSize: "11px", color: "#64748b", fontFamily: "var(--font-mono)" }}>
+            Token: {vaultId ? vaultId.slice(0, 24) + "..." : "active"}
           </div>
           <button
             onClick={async () => {
-              setConnected(false);
-              setVaultId(undefined);
-              await saveVaultPaymentToken("");
-              toast("Wallet disconnected", { icon: "🔌" });
+              const res = await disconnectWallet();
+              if (res.success) {
+                setConnected(false);
+                setVaultId(undefined);
+                toast("Wallet disconnected.", { icon: "🔌" });
+              }
             }}
             style={{
-              marginTop: "8px",
-              alignSelf: "flex-start",
-              background: "transparent",
-              border: "none",
-              color: "#dc2626",
-              fontSize: "12px",
-              fontWeight: 700,
-              cursor: "pointer",
-              textDecoration: "underline",
+              marginTop: "4px", alignSelf: "flex-start",
+              background: "transparent", border: "none",
+              color: "#dc2626", fontSize: "12px", fontWeight: 700,
+              cursor: "pointer", display: "flex", alignItems: "center", gap: "4px",
             }}
           >
-            Disconnect Wallet
+            <Unlink size={13} /> Disconnect Wallet
           </button>
         </div>
       ) : (
-        <div>
-          <div
-            style={{
-              background: "#fffbeb",
-              border: "1.5px solid #fde68a",
-              borderRadius: "8px",
-              padding: "12px 16px",
-              marginBottom: "16px",
-              display: "flex",
-              alignItems: "flex-start",
-              gap: "10px",
-            }}
-          >
-            <AlertCircle size={18} color="#d97706" style={{ flexShrink: 0, marginTop: "2px" }} />
-            <span style={{ fontSize: "13px", color: "#92400e" }}>
-              Log in with your sandbox buyer account (<code>sb-uxiyz53127082@personal.example.com</code>). No real money is spent.
-            </span>
-          </div>
-
+        <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
           <button
+            id="paypal-connect-btn"
             onClick={handleConnect}
             disabled={loading}
             style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "10px",
-              width: "100%",
-              padding: "14px 20px",
-              background: "#0070ba",
-              color: "#ffffff",
-              fontWeight: 800,
-              fontSize: "15px",
-              borderRadius: "var(--radius-md)",
-              border: "var(--border-thick)",
-              boxShadow: "var(--shadow-base)",
-              cursor: loading ? "not-allowed" : "pointer",
-              transition: "transform 0.1s ease",
+              display: "flex", alignItems: "center", justifyContent: "center", gap: "10px",
+              width: "100%", padding: "14px 20px",
+              background: loading ? "#94a3b8" : "#0070ba",
+              color: "#ffffff", fontWeight: 800, fontSize: "15px",
+              borderRadius: "var(--radius-md)", border: "var(--border-thick)",
+              boxShadow: "var(--shadow-base)", cursor: loading ? "not-allowed" : "pointer",
+              transition: "all 0.15s ease",
             }}
           >
-            {loading ? (
-              <>
-                <RefreshCw size={18} className="animate-spin" /> Authorizing with PayPal...
-              </>
-            ) : (
-              <>
-                <Wallet size={18} /> Connect with PayPal Vault
-              </>
-            )}
+            {loading
+              ? <><RefreshCw size={18} className="animate-spin" /> Connecting to PayPal...</>
+              : <><LogIn size={18} /> Log In with PayPal</>
+            }
           </button>
 
-          {/* Sandbox Instant Link Fallback */}
-          <div style={{ marginTop: "12px", textAlign: "center" }}>
-            <button
-              onClick={async () => {
-                setLoading(true);
-                const mockVaultToken = `vault_sb_${Date.now()}_uxiyz53127082`;
-                const saveRes = await saveVaultPaymentToken(mockVaultToken);
-                if (saveRes.success) {
-                  setConnected(true);
-                  setVaultId(mockVaultToken);
-                  toast.success("Sandbox Buyer Wallet Linked Successfully (Pre-approved)!");
-                }
-                setLoading(false);
-              }}
-              style={{
-                background: "transparent",
-                border: "none",
-                color: "#4f46e5",
-                fontSize: "12px",
-                fontWeight: 700,
-                cursor: "pointer",
-                textDecoration: "underline",
-              }}
-            >
-              ⚡ Or instantly link pre-approved Sandbox Buyer Wallet
-            </button>
+          <div style={{
+            background: "#f0f9ff", border: "1.5px solid #bae6fd",
+            borderRadius: "8px", padding: "12px 14px",
+            fontSize: "12px", color: "#0369a1", lineHeight: "1.7",
+          }}>
+            <strong>How it works:</strong><br />
+            1. A PayPal login popup opens<br />
+            2. Log in with <code>sb-uxiyz53127082@personal.example.com</code><br />
+            3. Click <strong>Agree</strong> to authorize Agent Leash<br />
+            4. Your PayPal OAuth token is stored securely — your password is never shared
           </div>
         </div>
       )}
