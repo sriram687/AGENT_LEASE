@@ -1,4 +1,4 @@
-﻿"use server";
+"use server";
 
 import { db } from "@leash/db";
 import { users } from "@leash/db";
@@ -34,10 +34,14 @@ async function getPayPalAccessToken(): Promise<string> {
  * Uses PayPal Identity / "Log In with PayPal" flow — works for ALL regions
  * including India sandbox. No Reference Transactions or Vault v3 needed.
  *
- * Scopes requested:
- *  - openid: basic identity
+ * Valid scopes per PayPal official docs (https://developer.paypal.com/log-in/references):
+ *  - openid: basic identity (REQUIRED)
+ *  - profile: full name
  *  - email: buyer email address
- *  - https://uri.paypal.com/services/payments/futurepayments: store payment method for future use
+ *  - https://uri.paypal.com/services/paypalattributes: account verification status + payer ID
+ *
+ * NOTE: "https://uri.paypal.com/services/payments/futurepayments" is NOT a valid
+ * Log In with PayPal scope and was causing the "Invalid client_id or redirect_uri" error.
  *
  * After user logs in and agrees, PayPal redirects to:
  *   /api/paypal/callback?code=<AUTH_CODE>&state=<STATE>
@@ -60,10 +64,12 @@ export async function getPayPalAuthUrl(): Promise<{
     const redirectUri = `${cockpitUrl}/api/paypal/callback`;
     const state = randomBytes(16).toString("hex");
 
+    // Only valid OIDC scopes per https://developer.paypal.com/log-in/references#scope-attributes
     const scopes = [
       "openid",
+      "profile",
       "email",
-      "https://uri.paypal.com/services/payments/futurepayments",
+      "https://uri.paypal.com/services/paypalattributes",
     ].join(" ");
 
     const params = new URLSearchParams({
@@ -107,7 +113,9 @@ export async function exchangePayPalCode(code: string): Promise<{
 
     const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
 
-    const res = await fetch(`${PAYPAL_API_BASE}/v1/identity/openidconnect/tokenservice`, {
+    // Per PayPal docs: https://developer.paypal.com/log-in/build#3-get-access-token
+    // Token endpoint: POST https://api-m.sandbox.paypal.com/v1/oauth2/token
+    const res = await fetch(`${PAYPAL_API_BASE}/v1/oauth2/token`, {
       method: "POST",
       headers: {
         Authorization: `Basic ${credentials}`,
@@ -138,7 +146,8 @@ export async function exchangePayPalCode(code: string): Promise<{
     // Fetch user email using the access token
     let email: string | undefined;
     try {
-      const userRes = await fetch(`${PAYPAL_API_BASE}/v1/identity/openidconnect/userinfo?schema=openid`, {
+      // Per PayPal docs: https://developer.paypal.com/log-in/build#5-get-customer-info
+      const userRes = await fetch(`${PAYPAL_API_BASE}/v1/identity/oauth2/userinfo?schema=openid`, {
         headers: { Authorization: `Bearer ${data.access_token}` },
         cache: "no-store",
       });
