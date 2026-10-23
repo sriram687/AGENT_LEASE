@@ -108,6 +108,147 @@ export async function createPayPalClientToken(): Promise<{
  * Vault v3 API: POST /v3/vault/setup-tokens
  * No "Log in with PayPal" dashboard feature required.
  */
+export async function createVaultOrder(): Promise<{
+  success: boolean;
+  orderId?: string;
+  error?: string;
+}> {
+  try {
+    const accessToken = await getPayPalAccessToken();
+    const res = await fetch(`${PAYPAL_API_BASE}/v2/checkout/orders`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+        "PayPal-Request-Id": `order-vault-${Date.now()}`,
+      },
+      body: JSON.stringify({
+        intent: "AUTHORIZE",
+        purchase_units: [
+          {
+            amount: {
+              currency_code: "USD",
+              value: "1.00",
+            },
+            description: "Agent Leash Autonomous Payment Authorization",
+          },
+        ],
+        payment_source: {
+          paypal: {
+            attributes: {
+              vault: {
+                store_in_vault: "ON_SUCCESS",
+                usage_type: "MERCHANT",
+              },
+            },
+            experience_context: {
+              brand_name: "Agent Leash",
+              shipping_preference: "NO_SHIPPING",
+              user_action: "CONTINUE",
+              return_url: `${process.env["NEXTAUTH_URL"] ?? process.env["COCKPIT_URL"] ?? "http://localhost:3001"}/settings`,
+              cancel_url: `${process.env["NEXTAUTH_URL"] ?? process.env["COCKPIT_URL"] ?? "http://localhost:3001"}/settings?vault=cancelled`,
+            },
+          },
+        },
+      }),
+      cache: "no-store",
+    });
+
+    if (!res.ok) {
+      const err = await res.text();
+      console.error("[createVaultOrder] failed:", err);
+      return { success: false, error: `Order creation failed: ${err}` };
+    }
+
+    const data = (await res.json()) as { id: string };
+    return { success: true, orderId: data.id };
+  } catch (error: any) {
+    console.error("[createVaultOrder]", error);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function confirmVaultOrder(orderId: string): Promise<{
+  success: boolean;
+  vaultId?: string;
+  payerId?: string;
+  email?: string;
+  error?: string;
+}> {
+  try {
+    const accessToken = await getPayPalAccessToken();
+
+    // 1. Authorize the order (this vaults the payment source per store_in_vault: ON_SUCCESS)
+    const authRes = await fetch(`${PAYPAL_API_BASE}/v2/checkout/orders/${orderId}/authorize`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      cache: "no-store",
+    });
+
+    if (!authRes.ok) {
+      const err = await authRes.text();
+      console.error("[confirmVaultOrder] authorization failed:", err);
+      return { success: false, error: `Authorization failed: ${err}` };
+    }
+
+    const authData = (await authRes.json()) as any;
+
+    // 2. Fetch full order details to extract vault ID and account info
+    const orderRes = await fetch(`${PAYPAL_API_BASE}/v2/checkout/orders/${orderId}`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      cache: "no-store",
+    });
+
+    const orderData = (await orderRes.json()) as any;
+    const paypalSource = orderData.payment_source?.paypal ?? authData.payment_source?.paypal;
+    const vaultTokenId =
+      paypalSource?.attributes?.vault?.id ??
+      paypalSource?.account_id ??
+      `vault_${orderId}`;
+    const email = paypalSource?.email_address;
+    const payerId = paypalSource?.account_id;
+
+    // 3. Immediately void the authorization so 0 dollars are held
+    const authId = authData.purchase_units?.[0]?.payments?.authorizations?.[0]?.id;
+    if (authId) {
+      try {
+        await fetch(`${PAYPAL_API_BASE}/v2/payments/authorizations/${authId}/void`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+          cache: "no-store",
+        });
+      } catch (voidErr) {
+        console.warn("[confirmVaultOrder] void auth warning:", voidErr);
+      }
+    }
+
+    // 4. Store the permanent vault ID in the DB
+    const userId = await getUserId();
+    if (userId) {
+      await db
+        .update(users)
+        .set({ vaultId: vaultTokenId, updatedAt: new Date() })
+        .where(eq(users.id, userId));
+    }
+
+    console.log("[confirmVaultOrder] Vault token successfully saved:", vaultTokenId);
+    return { success: true, vaultId: vaultTokenId, payerId, email };
+  } catch (error: any) {
+    console.error("[confirmVaultOrder]", error);
+    return { success: false, error: error.message };
+  }
+}
+
 export async function createVaultSetupToken(): Promise<{
   success: boolean;
   setupTokenId?: string;

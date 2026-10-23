@@ -3,8 +3,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { PayPalScriptProvider, PayPalButtons, usePayPalScriptReducer } from "@paypal/react-paypal-js";
 import {
-  createVaultSetupToken,
-  confirmVaultToken,
+  createVaultOrder,
+  confirmVaultOrder,
   disconnectWallet,
 } from "@/lib/actions/paypal";
 import { CheckCircle2, Shield, Wallet, RefreshCw, Unlink, Key } from "lucide-react";
@@ -20,30 +20,30 @@ function VaultButtons({
   const [{ isPending }] = usePayPalScriptReducer();
   const [creating, setCreating] = useState(false);
 
-  const createSetupToken = useCallback(async () => {
+  const createOrder = useCallback(async () => {
     setCreating(true);
-    const res = await createVaultSetupToken();
+    const res = await createVaultOrder();
     setCreating(false);
-    if (!res.success || !res.setupTokenId) {
-      toast.error("PayPal Error: " + (res.error ?? "Could not create setup token"));
-      throw new Error(res.error ?? "no setup token");
+    if (!res.success || !res.orderId) {
+      toast.error("PayPal Error: " + (res.error ?? "Could not create order"));
+      throw new Error(res.error ?? "no order id");
     }
-    return res.setupTokenId;
+    return res.orderId;
   }, []);
 
   const onApprove = useCallback(
-    async (data: { vaultSetupToken: string }) => {
-      toast.loading("Saving your PayPal wallet...", { id: "vault-confirm" });
-      const res = await confirmVaultToken(data.vaultSetupToken);
+    async (data: { orderID: string }) => {
+      toast.loading("Authorizing PayPal wallet...", { id: "vault-confirm" });
+      const res = await confirmVaultOrder(data.orderID);
       toast.dismiss("vault-confirm");
 
-      if (res.success && res.paymentTokenId) {
+      if (res.success && res.vaultId) {
         toast.success(
           res.email
             ? `✅ PayPal connected: ${res.email}`
             : "✅ PayPal Wallet connected!"
         );
-        onConnected(res.paymentTokenId, res.email);
+        onConnected(res.vaultId, res.email);
       } else {
         toast.error("Connection failed: " + (res.error ?? "unknown error"));
       }
@@ -83,8 +83,8 @@ function VaultButtons({
         height: 48,
       }}
       fundingSource="paypal"
-      createVaultSetupToken={createSetupToken}
-      onApprove={onApprove as any}
+      createOrder={createOrder}
+      onApprove={onApprove}
       onError={(err) => {
         console.error("[PayPalButtons] onError", err);
         toast.error("PayPal encountered an error. Please try again.");
@@ -253,7 +253,7 @@ export function PayPalVaultButton({
         options={{
           clientId: clientId,
           components: "buttons",
-          vault: true,
+          intent: "authorize",
           currency: "USD",
         }}
       >
