@@ -127,7 +127,7 @@ export async function createVaultSetupToken(): Promise<{
       body: JSON.stringify({
         payment_source: {
           paypal: {
-            usage_type: "PLATFORM",
+            usage_type: "MERCHANT",
             experience_context: {
               payment_method_preference: "IMMEDIATE_PAYMENT_REQUIRED",
               payment_method_selected: "PAYPAL",
