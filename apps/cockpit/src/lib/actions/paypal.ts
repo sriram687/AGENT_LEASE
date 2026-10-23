@@ -40,8 +40,17 @@ async function getUserId(): Promise<string | null> {
     const session = await auth();
     if (session?.user?.id) return session.user.id;
     const [first] = await db.select({ id: users.id }).from(users).limit(1);
-    return first?.id ?? null;
-  } catch {
+    if (first?.id) return first.id;
+    const [created] = await db
+      .insert(users)
+      .values({
+        email: "operator@agentleash.dev",
+        name: "Operator",
+      })
+      .returning({ id: users.id });
+    return created?.id ?? null;
+  } catch (error) {
+    console.error("[getUserId] error:", error);
     return null;
   }
 }

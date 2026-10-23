@@ -254,7 +254,6 @@ export function PayPalVaultButton({
           clientId: clientId,
           components: "buttons",
           vault: true,
-          intent: "tokenize",
           currency: "USD",
         }}
       >
