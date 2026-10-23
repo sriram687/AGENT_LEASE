@@ -4,186 +4,247 @@ import { db } from "@leash/db";
 import { users } from "@leash/db";
 import { eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
-import { randomBytes } from "crypto";
 
 const PAYPAL_API_BASE =
   process.env["PAYPAL_API_BASE"] ??
   process.env["PAYPAL_BASE_URL"] ??
   "https://api-m.sandbox.paypal.com";
 
-const PAYPAL_WEB_BASE = "https://www.sandbox.paypal.com";
+// ─── Internal helper ─────────────────────────────────────────────────────────
 
 async function getPayPalAccessToken(): Promise<string> {
   const clientId = process.env["PAYPAL_CLIENT_ID"];
   const clientSecret = process.env["PAYPAL_CLIENT_SECRET"];
-  if (!clientId || !clientSecret) throw new Error("Missing PAYPAL_CLIENT_ID or PAYPAL_CLIENT_SECRET");
+  if (!clientId || !clientSecret)
+    throw new Error("Missing PAYPAL_CLIENT_ID or PAYPAL_CLIENT_SECRET");
+
   const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
   const res = await fetch(`${PAYPAL_API_BASE}/v1/oauth2/token`, {
     method: "POST",
-    headers: { Authorization: `Basic ${credentials}`, "Content-Type": "application/x-www-form-urlencoded" },
+    headers: {
+      Authorization: `Basic ${credentials}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
     body: "grant_type=client_credentials",
     cache: "no-store",
   });
+
   if (!res.ok) throw new Error(`PayPal OAuth failed: ${await res.text()}`);
   return ((await res.json()) as { access_token: string }).access_token;
 }
 
+// ─── Helper to get/set user in DB ────────────────────────────────────────────
+
+async function getUserId(): Promise<string | null> {
+  try {
+    const session = await auth();
+    if (session?.user?.id) return session.user.id;
+    const [first] = await db.select({ id: users.id }).from(users).limit(1);
+    return first?.id ?? null;
+  } catch {
+    return null;
+  }
+}
+
+// ─── Step 1: Create a PayPal client token for the frontend SDK ───────────────
+
 /**
- * Generate the PayPal OAuth Connect URL.
- *
- * Uses PayPal Identity / "Log In with PayPal" flow — works for ALL regions
- * including India sandbox. No Reference Transactions or Vault v3 needed.
- *
- * Valid scopes per PayPal official docs (https://developer.paypal.com/log-in/references):
- *  - openid: basic identity (REQUIRED)
- *  - profile: full name
- *  - email: buyer email address
- *  - https://uri.paypal.com/services/paypalattributes: account verification status + payer ID
- *
- * NOTE: "https://uri.paypal.com/services/payments/futurepayments" is NOT a valid
- * Log In with PayPal scope and was causing the "Invalid client_id or redirect_uri" error.
- *
- * After user logs in and agrees, PayPal redirects to:
- *   /api/paypal/callback?code=<AUTH_CODE>&state=<STATE>
+ * Creates a PayPal client token.
+ * Used by the PayPal JS SDK on the frontend to initialize the Buttons component.
+ * No LIPP / "Log In with PayPal" dashboard setting required.
  */
-export async function getPayPalAuthUrl(): Promise<{
+export async function createPayPalClientToken(): Promise<{
   success: boolean;
-  authUrl?: string;
-  state?: string;
+  clientToken?: string;
+  clientId?: string;
   error?: string;
 }> {
   try {
     const clientId = process.env["PAYPAL_CLIENT_ID"];
     if (!clientId) return { success: false, error: "Missing PAYPAL_CLIENT_ID" };
 
-    const cockpitUrl =
-      process.env["NEXTAUTH_URL"] ??
-      process.env["COCKPIT_URL"] ??
-      "http://localhost:3001";
+    const accessToken = await getPayPalAccessToken();
 
-    const redirectUri = `${cockpitUrl}/api/paypal/callback`;
-    const state = randomBytes(16).toString("hex");
-
-    // Only valid OIDC scopes per https://developer.paypal.com/log-in/references#scope-attributes
-    const scopes = [
-      "openid",
-      "profile",
-      "email",
-      "https://uri.paypal.com/services/paypalattributes",
-    ].join(" ");
-
-    const params = new URLSearchParams({
-      flowEntry: "static",
-      client_id: clientId,
-      scope: scopes,
-      redirect_uri: redirectUri,
-      response_type: "code",
-      state,
-    });
-
-    const authUrl = `${PAYPAL_WEB_BASE}/connect?${params.toString()}`;
-
-    console.log("[getPayPalAuthUrl] Auth URL:", authUrl);
-    return { success: true, authUrl, state };
-  } catch (error: any) {
-    console.error("[getPayPalAuthUrl]", error);
-    return { success: false, error: error.message };
-  }
-}
-
-/**
- * Exchange OAuth authorization code for tokens and store refresh_token.
- * Called from /api/paypal/callback route after PayPal redirects back.
- */
-export async function exchangePayPalCode(code: string): Promise<{
-  success: boolean;
-  refreshToken?: string;
-  email?: string;
-  error?: string;
-}> {
-  try {
-    const clientId = process.env["PAYPAL_CLIENT_ID"];
-    const clientSecret = process.env["PAYPAL_CLIENT_SECRET"];
-    if (!clientId || !clientSecret) throw new Error("Missing credentials");
-
-    const cockpitUrl =
-      process.env["NEXTAUTH_URL"] ??
-      process.env["COCKPIT_URL"] ??
-      "http://localhost:3001";
-
-    const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
-
-    // Per PayPal docs: https://developer.paypal.com/log-in/build#3-get-access-token
-    // Token endpoint: POST https://api-m.sandbox.paypal.com/v1/oauth2/token
-    const res = await fetch(`${PAYPAL_API_BASE}/v1/oauth2/token`, {
+    const res = await fetch(`${PAYPAL_API_BASE}/v1/identity/generate-token`, {
       method: "POST",
       headers: {
-        Authorization: `Basic ${credentials}`,
-        "Content-Type": "application/x-www-form-urlencoded",
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+        "Accept-Language": "en_US",
       },
-      body: new URLSearchParams({
-        grant_type: "authorization_code",
-        code,
-        redirect_uri: `${cockpitUrl}/api/paypal/callback`,
-      }).toString(),
       cache: "no-store",
     });
 
     if (!res.ok) {
       const err = await res.text();
-      console.error("[exchangePayPalCode] token exchange failed:", err);
-      return { success: false, error: `Token exchange failed: ${err}` };
+      console.error("[createPayPalClientToken] failed:", err);
+      return { success: false, error: `Failed to generate client token: ${err}` };
     }
 
-    const data = (await res.json()) as {
-      access_token: string;
-      refresh_token: string;
-      token_type: string;
-    };
-
-    console.log("[exchangePayPalCode] Got refresh_token (first 20):", data.refresh_token?.slice(0, 20));
-
-    // Fetch user email using the access token
-    let email: string | undefined;
-    try {
-      // Per PayPal docs: https://developer.paypal.com/log-in/build#5-get-customer-info
-      const userRes = await fetch(`${PAYPAL_API_BASE}/v1/identity/oauth2/userinfo?schema=openid`, {
-        headers: { Authorization: `Bearer ${data.access_token}` },
-        cache: "no-store",
-      });
-      if (userRes.ok) {
-        const userInfo = (await userRes.json()) as { email?: string };
-        email = userInfo.email;
-      }
-    } catch (_) {}
-
-    // Store refresh_token as vault_id in DB
-    const session = await auth();
-    if (session?.user?.id) {
-      await db.update(users).set({ vaultId: data.refresh_token, updatedAt: new Date() }).where(eq(users.id, session.user.id));
-    } else {
-      const [first] = await db.select({ id: users.id }).from(users).limit(1);
-      if (first) await db.update(users).set({ vaultId: data.refresh_token, updatedAt: new Date() }).where(eq(users.id, first.id));
-    }
-
-    return { success: true, refreshToken: data.refresh_token, email };
+    const data = (await res.json()) as { client_token: string };
+    return { success: true, clientToken: data.client_token, clientId };
   } catch (error: any) {
-    console.error("[exchangePayPalCode]", error);
+    console.error("[createPayPalClientToken]", error);
     return { success: false, error: error.message };
   }
 }
 
+// ─── Step 2: Create a Vault Setup Token ──────────────────────────────────────
+
 /**
- * Disconnect wallet — clears vault_id from DB
+ * Creates a PayPal Vault Setup Token.
+ * Called when user clicks "Connect PayPal Wallet" button.
+ * The setup token is passed to the PayPal Buttons SDK on the frontend.
+ *
+ * Vault v3 API: POST /v3/vault/setup-tokens
+ * No "Log in with PayPal" dashboard feature required.
  */
+export async function createVaultSetupToken(): Promise<{
+  success: boolean;
+  setupTokenId?: string;
+  approvalUrl?: string;
+  error?: string;
+}> {
+  try {
+    const accessToken = await getPayPalAccessToken();
+
+    const res = await fetch(`${PAYPAL_API_BASE}/v3/vault/setup-tokens`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+        "PayPal-Request-Id": `setup-${Date.now()}`,
+      },
+      body: JSON.stringify({
+        payment_source: {
+          paypal: {
+            usage_type: "PLATFORM",
+            experience_context: {
+              payment_method_preference: "IMMEDIATE_PAYMENT_REQUIRED",
+              payment_method_selected: "PAYPAL",
+              brand_name: "Agent Leash",
+              locale: "en-US",
+              landing_page: "LOGIN",
+              shipping_preference: "NO_SHIPPING",
+              user_action: "SUBSCRIBE_NOW",
+              return_url: `${process.env["NEXTAUTH_URL"] ?? process.env["COCKPIT_URL"] ?? "http://localhost:3001"}/api/paypal/vault-return`,
+              cancel_url: `${process.env["NEXTAUTH_URL"] ?? process.env["COCKPIT_URL"] ?? "http://localhost:3001"}/settings?vault=cancelled`,
+            },
+          },
+        },
+      }),
+      cache: "no-store",
+    });
+
+    if (!res.ok) {
+      const err = await res.text();
+      console.error("[createVaultSetupToken] failed:", err);
+      return { success: false, error: `Setup token creation failed: ${err}` };
+    }
+
+    const data = (await res.json()) as {
+      id: string;
+      links: { href: string; rel: string }[];
+    };
+
+    const approvalLink = data.links?.find((l) => l.rel === "approve");
+    return {
+      success: true,
+      setupTokenId: data.id,
+      approvalUrl: approvalLink?.href,
+    };
+  } catch (error: any) {
+    console.error("[createVaultSetupToken]", error);
+    return { success: false, error: error.message };
+  }
+}
+
+// ─── Step 3: Confirm Vault Token after user approval ─────────────────────────
+
+/**
+ * After the user approves in the PayPal popup, exchange the setup token
+ * for a permanent payment token and store it in DB.
+ *
+ * Called from the API route /api/paypal/vault-return
+ * or directly from client after onApprove fires.
+ */
+export async function confirmVaultToken(setupTokenId: string): Promise<{
+  success: boolean;
+  paymentTokenId?: string;
+  payerId?: string;
+  email?: string;
+  error?: string;
+}> {
+  try {
+    const accessToken = await getPayPalAccessToken();
+
+    // Exchange setup token for a permanent vault payment token
+    const res = await fetch(`${PAYPAL_API_BASE}/v3/vault/payment-tokens`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+        "PayPal-Request-Id": `vault-${setupTokenId}`,
+      },
+      body: JSON.stringify({
+        payment_source: {
+          token: {
+            id: setupTokenId,
+            type: "SETUP_TOKEN",
+          },
+        },
+      }),
+      cache: "no-store",
+    });
+
+    if (!res.ok) {
+      const err = await res.text();
+      console.error("[confirmVaultToken] failed:", err);
+      return { success: false, error: `Vault confirmation failed: ${err}` };
+    }
+
+    const data = (await res.json()) as {
+      id: string;
+      customer?: { id: string };
+      payment_source?: {
+        paypal?: {
+          account_id?: string;
+          email_address?: string;
+        };
+      };
+    };
+
+    const paymentTokenId = data.id;
+    const payerId = data.customer?.id ?? data.payment_source?.paypal?.account_id;
+    const email = data.payment_source?.paypal?.email_address;
+
+    // Store in DB
+    const userId = await getUserId();
+    if (userId) {
+      await db
+        .update(users)
+        .set({ vaultId: paymentTokenId, updatedAt: new Date() })
+        .where(eq(users.id, userId));
+    }
+
+    console.log("[confirmVaultToken] Vault token saved:", paymentTokenId);
+    return { success: true, paymentTokenId, payerId, email };
+  } catch (error: any) {
+    console.error("[confirmVaultToken]", error);
+    return { success: false, error: error.message };
+  }
+}
+
+// ─── Disconnect wallet ────────────────────────────────────────────────────────
+
 export async function disconnectWallet(): Promise<{ success: boolean }> {
   try {
-    const session = await auth();
-    if (session?.user?.id) {
-      await db.update(users).set({ vaultId: null, updatedAt: new Date() }).where(eq(users.id, session.user.id));
-    } else {
-      const [first] = await db.select({ id: users.id }).from(users).limit(1);
-      if (first) await db.update(users).set({ vaultId: null, updatedAt: new Date() }).where(eq(users.id, first.id));
+    const userId = await getUserId();
+    if (userId) {
+      await db
+        .update(users)
+        .set({ vaultId: null, updatedAt: new Date() })
+        .where(eq(users.id, userId));
     }
     return { success: true };
   } catch (error) {
@@ -192,23 +253,32 @@ export async function disconnectWallet(): Promise<{ success: boolean }> {
   }
 }
 
-/**
- * Get current user vault/connect status
- */
-export async function getVaultStatus(): Promise<{ connected: boolean; vaultId?: string }> {
+// ─── Get current vault status ─────────────────────────────────────────────────
+
+export async function getVaultStatus(): Promise<{
+  connected: boolean;
+  vaultId?: string;
+}> {
   try {
-    const session = await auth();
-    let userRow: { vaultId: string | null } | undefined;
-    if (session?.user?.id) {
-      const [u] = await db.select({ vaultId: users.vaultId }).from(users).where(eq(users.id, session.user.id)).limit(1);
-      userRow = u;
-    } else {
-      const [u] = await db.select({ vaultId: users.vaultId }).from(users).limit(1);
-      userRow = u;
-    }
-    return userRow?.vaultId ? { connected: true, vaultId: userRow.vaultId } : { connected: false };
+    const userId = await getUserId();
+    if (!userId) return { connected: false };
+    const [u] = await db
+      .select({ vaultId: users.vaultId })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+    return u?.vaultId ? { connected: true, vaultId: u.vaultId } : { connected: false };
   } catch (error) {
     console.error("[getVaultStatus]", error);
     return { connected: false };
   }
+}
+
+// ─── Legacy exports (kept for any references that might exist) ────────────────
+// Stub out old OIDC functions so nothing breaks during migration
+export async function getPayPalAuthUrl() {
+  return { success: false, error: "Switched to Checkout/Vault flow. Use createVaultSetupToken() instead." };
+}
+export async function exchangePayPalCode(_code: string) {
+  return { success: false, error: "Switched to Checkout/Vault flow. Use confirmVaultToken() instead." };
 }
