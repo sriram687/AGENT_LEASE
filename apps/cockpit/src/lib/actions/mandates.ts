@@ -70,6 +70,18 @@ export async function getMandates(): Promise<{
       .innerJoin(agents, eq(mandates.agentId, agents.id))
       .orderBy(desc(mandates.createdAt));
 
+    // Ensure 100% real numbers: clean any previous demo placeholder values
+    for (const r of rows) {
+      if (r.mandate.spentCents === 4350 && r.mandate.reservedCents === 1850) {
+        await db
+          .update(mandates)
+          .set({ spentCents: 0, reservedCents: 0 })
+          .where(eq(mandates.id, r.mandate.id));
+        r.mandate.spentCents = 0;
+        r.mandate.reservedCents = 0;
+      }
+    }
+
     if (rows.length === 0 && operator?.id) {
       // Seed default mandate for testing
       const seeded = await seedDefaultMandate(operator.id, operator.publicKey);
@@ -165,8 +177,8 @@ async function seedDefaultMandate(
         agentId: agent.id,
         purpose: mandatePayload.purpose,
         totalBudgetCents: mandatePayload.totalBudgetCents,
-        spentCents: 4350, // $43.50 spent
-        reservedCents: 1850, // $18.50 held in open authorization
+        spentCents: 0,
+        reservedCents: 0,
         perPurchaseCapCents: mandatePayload.perPurchaseCapCents,
         escalateAboveCents: mandatePayload.escalateAboveCents,
         allowedCategories: mandatePayload.allowedCategories,
