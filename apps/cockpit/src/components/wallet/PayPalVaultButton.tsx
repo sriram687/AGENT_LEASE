@@ -273,11 +273,11 @@ export function PayPalVaultButton({
       >
         <strong>How it works:</strong><br />
         1. Click the PayPal button above<br />
-        2. Log in with your sandbox buyer account<br />
-        &nbsp;&nbsp;&nbsp;<code style={{ fontSize: "11px" }}>sb-km043r53470321@business.example.com</code><br />
-        &nbsp;&nbsp;&nbsp;Password: <code style={{ fontSize: "11px" }}>ChlzY_K8</code><br />
+        2. Log in with your <strong>Sandbox Personal (Buyer)</strong> account (NOT the merchant business account)<br />
+        &nbsp;&nbsp;&nbsp;Get it from: <a href="https://developer.paypal.com/dashboard/accounts" target="_blank" rel="noreferrer" style={{ textDecoration: "underline", fontWeight: 700 }}>Developer Dashboard &rarr; Testing Tools &rarr; Sandbox Accounts</a><br />
+        &nbsp;&nbsp;&nbsp;e.g. <code style={{ fontSize: "11px" }}>sb-uxiyz53127082@personal.example.com</code><br />
         3. Authorize Agent Leash to use this wallet<br />
-        4. Your PayPal Vault token is stored securely — your password is never shared
+        4. Your PayPal Vault token is stored securely &mdash; your password is never shared
       </div>
     </div>
   );
