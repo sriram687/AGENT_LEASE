@@ -388,7 +388,7 @@ export function MandateSimulatorModal({
                 }}
               >
                 <CreditCard size={15} />
-                {executing ? "Executing 2PC Hold..." : `⚡ Run & Deduct 2PC Hold ($${amount})`}
+                {executing ? "Placing PayPal Hold..." : `⚡ PayPal 2PC Hold ($${amount})`}
               </button>
 
               <button
@@ -414,9 +414,26 @@ export function MandateSimulatorModal({
                 <Play size={14} /> {running ? "Evaluating..." : "🔍 Dry-Run Advice Only"}
               </button>
             </div>
-            <span style={{ fontSize: "11px", color: "var(--color-ink-muted)", textAlign: "center" }}>
-              💡 <strong>Run & Deduct 2PC Hold</strong> checks policy guardrails and immediately reserves the funds in PostgreSQL, updating the balance card in real-time.
-            </span>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "6px",
+                padding: "6px 10px",
+                background: "#f0fdf4",
+                border: "1px solid #86efac",
+                borderRadius: "6px",
+                fontSize: "11px",
+                fontWeight: 700,
+                color: "#166534",
+              }}
+            >
+              <span>🟢</span>
+              <span>
+                <strong>100% Real PayPal Sandbox</strong>: Holds & Captures execute live via Vault Token <code>1gm62276cp965960w</code>.
+              </span>
+            </div>
           </div>
 
           {/* Simulation Output */}
@@ -529,7 +546,7 @@ export function MandateSimulatorModal({
                       boxShadow: "var(--shadow-sm)",
                     }}
                   >
-                    {executing ? "Processing..." : `💳 Execute 2PC Hold ($${amount}) & Update Balance`}
+                    {executing ? "Placing PayPal Hold..." : `💳 Real PayPal 2PC Hold ($${amount})`}
                   </button>
                   <button
                     type="button"
@@ -547,7 +564,7 @@ export function MandateSimulatorModal({
                       boxShadow: "var(--shadow-sm)",
                     }}
                   >
-                    {executing ? "Processing..." : `💸 Execute Direct Capture ($${amount})`}
+                    {executing ? "Processing Capture..." : `💸 Real PayPal Direct Capture ($${amount})`}
                   </button>
                 </div>
               )}

@@ -752,6 +752,18 @@ export async function resetMandateSpend(
   mandateId: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    // Delete linked payment records, escalations, and purchase requests for this mandate
+    const linkedReqs = await db
+      .select({ id: purchaseRequests.id })
+      .from(purchaseRequests)
+      .where(eq(purchaseRequests.mandateId, mandateId));
+
+    for (const req of linkedReqs) {
+      await db.delete(paymentRecords).where(eq(paymentRecords.purchaseRequestId, req.id));
+      await db.delete(escalations).where(eq(escalations.purchaseRequestId, req.id));
+    }
+    await db.delete(purchaseRequests).where(eq(purchaseRequests.mandateId, mandateId));
+
     await db
       .update(mandates)
       .set({
@@ -762,6 +774,7 @@ export async function resetMandateSpend(
       .where(eq(mandates.id, mandateId));
 
     revalidatePath("/mandates");
+    revalidatePath("/ledger");
     revalidatePath("/");
     return { success: true };
   } catch (error: any) {
