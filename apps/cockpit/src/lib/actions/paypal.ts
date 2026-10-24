@@ -143,6 +143,7 @@ export async function createVaultOrder(): Promise<{
             },
             experience_context: {
               brand_name: "Agent Leash",
+              landing_page: "LOGIN",
               shipping_preference: "NO_SHIPPING",
               user_action: "CONTINUE",
               return_url: `${process.env["NEXTAUTH_URL"] ?? process.env["COCKPIT_URL"] ?? "http://localhost:3001"}/settings`,
