@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import toast from "react-hot-toast";
 import {
   X,
   Sparkles,
@@ -10,24 +11,32 @@ import {
   Play,
   ArrowRight,
   ShieldAlert,
+  CreditCard,
+  Send,
 } from "lucide-react";
-import toast from "react-hot-toast";
-import { MandateWithAgent, simulateMandateCheck } from "@/lib/actions/mandates";
+import {
+  MandateWithAgent,
+  simulateMandateCheck,
+  executeMandateTransaction,
+} from "@/lib/actions/mandates";
 
 interface MandateSimulatorModalProps {
   mandate: MandateWithAgent | null;
   onClose: () => void;
+  onUpdated?: (updated?: Partial<MandateWithAgent> & { id: string }) => void;
 }
 
 export function MandateSimulatorModal({
   mandate,
   onClose,
+  onUpdated,
 }: MandateSimulatorModalProps) {
   const [amount, setAmount] = useState("18.50");
   const [merchant, setMerchant] = useState("AWS Cloud Services");
   const [mcc, setMcc] = useState("7372");
   const [purpose, setPurpose] = useState("Auto-scaling server instances for data pipeline");
   const [running, setRunning] = useState(false);
+  const [executing, setExecuting] = useState(false);
   const [result, setResult] = useState<any>(null);
 
   if (!mandate) return null;
@@ -62,6 +71,39 @@ export function MandateSimulatorModal({
 
     setRunning(false);
     setResult(res);
+  };
+
+  const handleExecute = async (actionType: "hold" | "capture") => {
+    const amountCents = Math.round(parseFloat(amount) * 100);
+    if (isNaN(amountCents) || amountCents <= 0) {
+      toast.error("Invalid amount");
+      return;
+    }
+
+    setExecuting(true);
+    const res = await executeMandateTransaction({
+      mandateId: mandate.id,
+      amountCents,
+      merchant,
+      mcc,
+      purpose,
+      actionType,
+    });
+    setExecuting(false);
+
+    if (res.success) {
+      toast.success(res.reason, { duration: 5000, icon: actionType === "hold" ? "💳" : "💸" });
+      if (onUpdated) {
+        onUpdated({
+          id: mandate.id,
+          ...(typeof res.spentCents === "number" ? { spentCents: res.spentCents } : {}),
+          ...(typeof res.reservedCents === "number" ? { reservedCents: res.reservedCents } : {}),
+        });
+      }
+      onClose();
+    } else {
+      toast.error(res.reason ?? "Transaction execution failed");
+    }
   };
 
   const loadPreset = (preset: "valid" | "escalate" | "block") => {
@@ -324,29 +366,57 @@ export function MandateSimulatorModal({
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={() => handleRunSimulation()}
-              disabled={running}
-              style={{
-                marginTop: "4px",
-                padding: "10px",
-                background: "var(--neo-purple)",
-                color: "#ffffff",
-                border: "var(--border-medium)",
-                borderRadius: "var(--radius-sm)",
-                boxShadow: "var(--shadow-sm)",
-                fontSize: "13px",
-                fontWeight: 800,
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: "6px",
-              }}
-            >
-              <Play size={14} /> {running ? "Evaluating Policy..." : "Run Policy Simulation"}
-            </button>
+            <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: "10px", marginTop: "6px" }}>
+              <button
+                type="button"
+                onClick={() => handleExecute("hold")}
+                disabled={executing || running}
+                style={{
+                  padding: "10px",
+                  background: "var(--neo-green)",
+                  color: "#121212",
+                  border: "var(--border-medium)",
+                  borderRadius: "var(--radius-sm)",
+                  boxShadow: "var(--shadow-sm)",
+                  fontSize: "13px",
+                  fontWeight: 900,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "6px",
+                }}
+              >
+                <CreditCard size={15} />
+                {executing ? "Executing 2PC Hold..." : `⚡ Run & Deduct 2PC Hold ($${amount})`}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleRunSimulation()}
+                disabled={running || executing}
+                style={{
+                  padding: "10px",
+                  background: "#ffffff",
+                  color: "#121212",
+                  border: "var(--border-medium)",
+                  borderRadius: "var(--radius-sm)",
+                  boxShadow: "var(--shadow-sm)",
+                  fontSize: "13px",
+                  fontWeight: 800,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "6px",
+                }}
+              >
+                <Play size={14} /> {running ? "Evaluating..." : "🔍 Dry-Run Advice Only"}
+              </button>
+            </div>
+            <span style={{ fontSize: "11px", color: "var(--color-ink-muted)", textAlign: "center" }}>
+              💡 <strong>Run & Deduct 2PC Hold</strong> checks policy guardrails and immediately reserves the funds in PostgreSQL, updating the balance card in real-time.
+            </span>
           </div>
 
           {/* Simulation Output */}
@@ -430,6 +500,86 @@ export function MandateSimulatorModal({
                   {result.checks.merchantAllowed ? "✅" : "❌"} Merchant Approved
                 </div>
               </div>
+
+              {/* Actionable execution buttons to actually update DB */}
+              {result.decision === "ALLOW" && (
+                <div
+                  style={{
+                    marginTop: "8px",
+                    paddingTop: "12px",
+                    borderTop: "1.5px dashed #86efac",
+                    display: "flex",
+                    gap: "8px",
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => handleExecute("hold")}
+                    disabled={executing}
+                    style={{
+                      padding: "8px 16px",
+                      background: "var(--neo-blue)",
+                      color: "#121212",
+                      border: "1.5px solid #121212",
+                      borderRadius: "var(--radius-pill)",
+                      fontSize: "12px",
+                      fontWeight: 800,
+                      cursor: "pointer",
+                      boxShadow: "var(--shadow-sm)",
+                    }}
+                  >
+                    {executing ? "Processing..." : `💳 Execute 2PC Hold ($${amount}) & Update Balance`}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleExecute("capture")}
+                    disabled={executing}
+                    style={{
+                      padding: "8px 16px",
+                      background: "var(--neo-green)",
+                      color: "#121212",
+                      border: "1.5px solid #121212",
+                      borderRadius: "var(--radius-pill)",
+                      fontSize: "12px",
+                      fontWeight: 800,
+                      cursor: "pointer",
+                      boxShadow: "var(--shadow-sm)",
+                    }}
+                  >
+                    {executing ? "Processing..." : `💸 Execute Direct Capture ($${amount})`}
+                  </button>
+                </div>
+              )}
+
+              {result.decision === "ESCALATE" && (
+                <div
+                  style={{
+                    marginTop: "8px",
+                    paddingTop: "12px",
+                    borderTop: "1.5px dashed #fde047",
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => handleExecute("hold")}
+                    disabled={executing}
+                    style={{
+                      padding: "8px 18px",
+                      background: "var(--neo-yellow)",
+                      color: "#121212",
+                      border: "1.5px solid #121212",
+                      borderRadius: "var(--radius-pill)",
+                      fontSize: "12px",
+                      fontWeight: 800,
+                      cursor: "pointer",
+                      boxShadow: "var(--shadow-sm)",
+                    }}
+                  >
+                    {executing ? "Sending..." : "⚠️ Send to Human Escalations Inbox (Phase 3)"}
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>

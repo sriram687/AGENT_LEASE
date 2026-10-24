@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   FileText,
   Plus,
@@ -13,7 +13,7 @@ import {
   Sparkles,
   RefreshCw,
 } from "lucide-react";
-import { MandateWithAgent } from "@/lib/actions/mandates";
+import { MandateWithAgent, getMandates } from "@/lib/actions/mandates";
 import { MandateCard } from "./MandateCard";
 import { CreateMandateModal } from "./CreateMandateModal";
 import { MandateSimulatorModal } from "./MandateSimulatorModal";
@@ -29,6 +29,11 @@ export function MandatesView({ initialMandates }: MandatesViewProps) {
   const [mandates, setMandates] = useState<MandateWithAgent[]>(initialMandates);
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<"all" | "active" | "suspended" | "revoked">("all");
+
+  // Keep state synced with server props
+  useEffect(() => {
+    setMandates(initialMandates);
+  }, [initialMandates]);
 
   // Modals state
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -55,7 +60,29 @@ export function MandatesView({ initialMandates }: MandatesViewProps) {
     setMandates([newMandate, ...mandates]);
   };
 
-  const handleRefresh = () => {
+  const handleUpdateMandate = async (updated?: Partial<MandateWithAgent> & { id: string }) => {
+    // 1. Optimistic instant local update
+    if (updated) {
+      setMandates((prev) =>
+        prev.map((m) => {
+          if (m.id === updated.id) {
+            const next = { ...m, ...updated };
+            next.availableCents = Math.max(
+              0,
+              next.totalBudgetCents - next.spentCents - next.reservedCents
+            );
+            return next;
+          }
+          return m;
+        })
+      );
+    }
+
+    // 2. Fresh database fetch for 100% real parity
+    const res = await getMandates();
+    if (res.success && res.mandates) {
+      setMandates(res.mandates);
+    }
     router.refresh();
   };
 
@@ -312,7 +339,8 @@ export function MandatesView({ initialMandates }: MandatesViewProps) {
               mandate={mandate}
               onInspectSignature={(m) => setInspectMandate(m)}
               onSimulate={(m) => setSimulateMandate(m)}
-              onStatusChanged={handleRefresh}
+              onStatusChanged={() => handleUpdateMandate()}
+              onUpdated={handleUpdateMandate}
             />
           ))}
         </div>
@@ -381,6 +409,7 @@ export function MandatesView({ initialMandates }: MandatesViewProps) {
       <MandateSimulatorModal
         mandate={simulateMandate}
         onClose={() => setSimulateMandate(null)}
+        onUpdated={handleUpdateMandate}
       />
     </div>
   );

@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { db, mandates, agents, users } from "@leash/db";
+import { db, mandates, agents, users, purchaseRequests, escalations } from "@leash/db";
 import { eq, desc } from "drizzle-orm";
 import { getUserProfile } from "./user";
 import {
@@ -512,3 +512,179 @@ export async function simulateMandateCheck(input: {
     };
   }
 }
+
+/**
+ * Execute a transaction against a mandate:
+ * Actually updates the database (reserving or spending funds)
+ * so live numbers immediately reflect on the Cockpit UI!
+ */
+export async function executeMandateTransaction(input: {
+  mandateId: string;
+  amountCents: number;
+  merchant: string;
+  mcc: string;
+  purpose: string;
+  actionType: "hold" | "capture";
+}): Promise<{
+  success: boolean;
+  decision: "ALLOW" | "ESCALATE" | "BLOCK";
+  reason: string;
+  spentCents?: number;
+  reservedCents?: number;
+  error?: string;
+}> {
+  try {
+    // 1. First run the policy check
+    const checkResult = await simulateMandateCheck({
+      mandateId: input.mandateId,
+      amountCents: input.amountCents,
+      merchant: input.merchant,
+      mcc: input.mcc,
+      purpose: input.purpose,
+    });
+
+    const [found] = await db
+      .select()
+      .from(mandates)
+      .where(eq(mandates.id, input.mandateId))
+      .limit(1);
+
+    if (!found) {
+      return {
+        success: false,
+        decision: "BLOCK",
+        reason: "Mandate not found in database",
+      };
+    }
+
+    if (checkResult.decision === "BLOCK") {
+      return {
+        success: false,
+        decision: "BLOCK",
+        reason: checkResult.reason,
+      };
+    }
+
+    // 2. If ESCALATE: Record purchase request + pending escalation
+    if (checkResult.decision === "ESCALATE") {
+      const idempotencyKey = `test_req_${randomUUID()}`;
+      const [req] = await db
+        .insert(purchaseRequests)
+        .values({
+          mandateId: found.id,
+          agentId: found.agentId,
+          itemName: input.purpose.slice(0, 100),
+          vendorName: input.merchant,
+          category: input.mcc,
+          amountCents: input.amountCents,
+          currency: "USD",
+          justification: input.purpose,
+          status: "ESCALATED",
+          idempotencyKey,
+        })
+        .returning();
+
+      if (req) {
+        await db.insert(escalations).values({
+          purchaseRequestId: req.id,
+          status: "PENDING",
+          leashReasoning: checkResult.reason,
+          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24h SLA
+        });
+      }
+
+      revalidatePath("/escalations");
+      revalidatePath("/mandates");
+      revalidatePath("/");
+
+      return {
+        success: true,
+        decision: "ESCALATE",
+        reason: checkResult.reason,
+      };
+    }
+
+    // 3. If ALLOW: Execute 2PC Hold or Instant Capture
+    let newSpent = found.spentCents;
+    let newReserved = found.reservedCents;
+
+    if (input.actionType === "hold") {
+      newReserved += input.amountCents;
+    } else {
+      newSpent += input.amountCents;
+    }
+
+    await db
+      .update(mandates)
+      .set({
+        spentCents: newSpent,
+        reservedCents: newReserved,
+        updatedAt: new Date(),
+      })
+      .where(eq(mandates.id, found.id));
+
+    // Record purchase request
+    const idempotencyKey = `test_req_${randomUUID()}`;
+    await db.insert(purchaseRequests).values({
+      mandateId: found.id,
+      agentId: found.agentId,
+      itemName: input.purpose.slice(0, 100),
+      vendorName: input.merchant,
+      category: input.mcc,
+      amountCents: input.amountCents,
+      currency: "USD",
+      justification: input.purpose,
+      status: input.actionType === "hold" ? "AUTHORIZED" : "CAPTURED",
+      idempotencyKey,
+    });
+
+    revalidatePath("/mandates");
+    revalidatePath("/ledger");
+    revalidatePath("/");
+
+    return {
+      success: true,
+      decision: "ALLOW",
+      reason:
+        input.actionType === "hold"
+          ? `Successfully held $${(input.amountCents / 100).toFixed(2)} in 2PC Escrow reserve!`
+          : `Successfully captured $${(input.amountCents / 100).toFixed(2)}!`,
+      spentCents: newSpent,
+      reservedCents: newReserved,
+    };
+  } catch (error: any) {
+    console.error("[executeMandateTransaction] error:", error);
+    return {
+      success: false,
+      decision: "BLOCK",
+      reason: error.message ?? "Transaction execution failed",
+      error: error.message,
+    };
+  }
+}
+
+/**
+ * Reset mandate spend & holds back to $0.00
+ */
+export async function resetMandateSpend(
+  mandateId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    await db
+      .update(mandates)
+      .set({
+        spentCents: 0,
+        reservedCents: 0,
+        updatedAt: new Date(),
+      })
+      .where(eq(mandates.id, mandateId));
+
+    revalidatePath("/mandates");
+    revalidatePath("/");
+    return { success: true };
+  } catch (error: any) {
+    console.error("[resetMandateSpend] error:", error);
+    return { success: false, error: error.message };
+  }
+}
+

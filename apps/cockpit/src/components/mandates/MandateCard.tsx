@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import toast from "react-hot-toast";
 import {
   ShieldCheck,
   Pause,
@@ -18,14 +19,18 @@ import {
   Copy,
   Check,
 } from "lucide-react";
-import toast from "react-hot-toast";
-import { MandateWithAgent, toggleMandateStatus } from "@/lib/actions/mandates";
+import {
+  MandateWithAgent,
+  toggleMandateStatus,
+  resetMandateSpend,
+} from "@/lib/actions/mandates";
 
 interface MandateCardProps {
   mandate: MandateWithAgent;
   onInspectSignature: (mandate: MandateWithAgent) => void;
   onSimulate: (mandate: MandateWithAgent) => void;
   onStatusChanged?: () => void;
+  onUpdated?: (updated?: Partial<MandateWithAgent> & { id: string }) => void;
 }
 
 export function MandateCard({
@@ -33,6 +38,7 @@ export function MandateCard({
   onInspectSignature,
   onSimulate,
   onStatusChanged,
+  onUpdated,
 }: MandateCardProps) {
   const [status, setStatus] = useState(mandate.status);
   const [updating, setUpdating] = useState(false);
@@ -62,6 +68,7 @@ export function MandateCard({
         `Mandate ${nextStatus === "active" ? "Resumed" : "Suspended"}.`,
         { icon: nextStatus === "active" ? "▶️" : "⏸️" }
       );
+      if (onUpdated) onUpdated({ id: mandate.id, status: nextStatus });
       if (onStatusChanged) onStatusChanged();
     } else {
       toast.error(res.error ?? "Failed to update status");
@@ -73,6 +80,18 @@ export function MandateCard({
     setCopiedId(true);
     toast.success("Mandate ID copied to clipboard!");
     setTimeout(() => setCopiedId(false), 2000);
+  };
+
+  const handleResetSpend = async () => {
+    if (!confirm("Reset this mandate's spend and escrow holds back to $0.00?")) return;
+    const res = await resetMandateSpend(mandate.id);
+    if (res.success) {
+      toast.success("Mandate balance reset to $0.00!");
+      if (onUpdated) onUpdated({ id: mandate.id, spentCents: 0, reservedCents: 0 });
+      if (onStatusChanged) onStatusChanged();
+    } else {
+      toast.error(res.error ?? "Failed to reset balance");
+    }
   };
 
   return (
@@ -377,6 +396,27 @@ export function MandateCard({
         </button>
 
         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          {/* Reset spend button if spend > 0 */}
+          {(mandate.spentCents > 0 || mandate.reservedCents > 0) && (
+            <button
+              onClick={handleResetSpend}
+              style={{
+                padding: "5px 10px",
+                background: "#fee2e2",
+                border: "1.5px solid #121212",
+                borderRadius: "var(--radius-pill)",
+                fontSize: "11px",
+                fontWeight: 800,
+                color: "#991b1b",
+                cursor: "pointer",
+                boxShadow: "var(--shadow-sm)",
+              }}
+              title="Reset spend & holds to $0.00"
+            >
+              Reset ($0)
+            </button>
+          )}
+
           {/* Quick Simulate Button */}
           <button
             onClick={() => onSimulate(mandate)}
