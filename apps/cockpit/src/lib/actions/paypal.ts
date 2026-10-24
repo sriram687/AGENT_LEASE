@@ -438,3 +438,174 @@ export async function getPayPalAuthUrl() {
 export async function exchangePayPalCode(_code: string) {
   return { success: false, error: "Switched to Checkout/Vault flow. Use confirmVaultToken() instead." };
 }
+
+// ─── Step 4: Two-Phase Commit (2PC) Authorize with Vault Token ─────────────────
+
+export interface PayPalAuthorizeResult {
+  success: boolean;
+  orderId?: string;
+  authorizationId?: string;
+  amount?: string;
+  currency?: string;
+  status?: string;
+  rawSnapshot?: string;
+  error?: string;
+}
+
+export async function authorizePayPalVaultPayment(input: {
+  vaultId: string;
+  amountCents: number;
+  description: string;
+  referenceId: string;
+}): Promise<PayPalAuthorizeResult> {
+  try {
+    const accessToken = await getPayPalAccessToken();
+    const dollars = (input.amountCents / 100).toFixed(2);
+    const requestId = `auth-req-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+    const orderPayload = {
+      intent: "AUTHORIZE",
+      purchase_units: [
+        {
+          reference_id: input.referenceId,
+          description: input.description.slice(0, 127),
+          amount: {
+            currency_code: "USD",
+            value: dollars,
+          },
+        },
+      ],
+      payment_source: {
+        token: {
+          id: input.vaultId,
+          type: "PAYMENT_METHOD_TOKEN",
+        },
+      },
+    };
+
+    const res = await fetch(`${PAYPAL_API_BASE}/v2/checkout/orders`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+        "PayPal-Request-Id": requestId,
+      },
+      body: JSON.stringify(orderPayload),
+    });
+
+    const resText = await res.text();
+    if (!res.ok) {
+      console.error("[authorizePayPalVaultPayment] PayPal error:", resText);
+      return { success: false, error: `PayPal authorization failed: ${resText}` };
+    }
+
+    const data = JSON.parse(resText);
+    const orderId = data.id;
+    const auth = data.purchase_units?.[0]?.payments?.authorizations?.[0];
+    const authorizationId = auth?.id;
+
+    console.log(`[authorizePayPalVaultPayment] Real PayPal Order ${orderId} Authorized: AuthID=${authorizationId}`);
+
+    return {
+      success: true,
+      ...(orderId ? { orderId } : {}),
+      ...(authorizationId ? { authorizationId } : {}),
+      amount: dollars,
+      currency: "USD",
+      status: auth?.status ?? data.status,
+      rawSnapshot: resText,
+    };
+  } catch (error: any) {
+    console.error("[authorizePayPalVaultPayment]", error);
+    return { success: false, error: error.message };
+  }
+}
+
+// ─── Step 5: Capture an Authorized 2PC Hold ───────────────────────────────────
+
+export interface PayPalCaptureResult {
+  success: boolean;
+  captureId?: string;
+  status?: string;
+  rawSnapshot?: string;
+  error?: string;
+}
+
+export async function capturePayPalAuthorization(
+  authorizationId: string,
+  amountCents?: number
+): Promise<PayPalCaptureResult> {
+  try {
+    const accessToken = await getPayPalAccessToken();
+    const requestId = `cap-req-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+    const payload = amountCents
+      ? {
+          amount: {
+            currency_code: "USD",
+            value: (amountCents / 100).toFixed(2),
+          },
+          is_final_capture: true,
+        }
+      : { is_final_capture: true };
+
+    const res = await fetch(`${PAYPAL_API_BASE}/v2/payments/authorizations/${authorizationId}/capture`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+        "PayPal-Request-Id": requestId,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const resText = await res.text();
+    if (!res.ok) {
+      console.error("[capturePayPalAuthorization] error:", resText);
+      return { success: false, error: `PayPal capture failed: ${resText}` };
+    }
+
+    const data = JSON.parse(resText);
+    const captureId = data.id;
+    console.log(`[capturePayPalAuthorization] Captured: ID=${captureId}, status=${data.status}`);
+
+    return {
+      success: true,
+      ...(captureId ? { captureId } : {}),
+      status: data.status,
+      rawSnapshot: resText,
+    };
+  } catch (error: any) {
+    console.error("[capturePayPalAuthorization]", error);
+    return { success: false, error: error.message };
+  }
+}
+
+// ─── Step 6: Void / Release an Authorized Hold ────────────────────────────────
+
+export async function voidPayPalAuthorization(
+  authorizationId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const accessToken = await getPayPalAccessToken();
+    const res = await fetch(`${PAYPAL_API_BASE}/v2/payments/authorizations/${authorizationId}/void`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!res.ok && res.status !== 204) {
+      const resText = await res.text();
+      console.error("[voidPayPalAuthorization] error:", resText);
+      return { success: false, error: `PayPal void failed: ${resText}` };
+    }
+
+    console.log(`[voidPayPalAuthorization] Voided authorization: ${authorizationId}`);
+    return { success: true };
+  } catch (error: any) {
+    console.error("[voidPayPalAuthorization]", error);
+    return { success: false, error: error.message };
+  }
+}

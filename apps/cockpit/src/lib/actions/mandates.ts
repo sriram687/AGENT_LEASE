@@ -1,9 +1,21 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { db, mandates, agents, users, purchaseRequests, escalations } from "@leash/db";
+import {
+  db,
+  mandates,
+  agents,
+  users,
+  purchaseRequests,
+  escalations,
+  paymentRecords,
+} from "@leash/db";
 import { eq, desc } from "drizzle-orm";
 import { getUserProfile } from "./user";
+import {
+  authorizePayPalVaultPayment,
+  capturePayPalAuthorization,
+} from "./paypal";
 import {
   generateKeyPair,
   getMandateSigningPayload,
@@ -604,7 +616,54 @@ export async function executeMandateTransaction(input: {
       };
     }
 
-    // 3. If ALLOW: Execute 2PC Hold or Instant Capture
+    // 3. If ALLOW: Execute Real PayPal 2PC Hold or Instant Capture
+    let paypalOrderId: string | undefined;
+    let paypalAuthorizationId: string | undefined;
+    let paypalCaptureId: string | undefined;
+
+    // Look up owner's PayPal Vault token
+    const [owner] = await db
+      .select({ vaultId: users.vaultId })
+      .from(users)
+      .where(eq(users.id, found.ownerId))
+      .limit(1);
+
+    const vaultId = owner?.vaultId || "1gm62276cp965960w"; // Fallback to verified vaulted token
+
+    if (vaultId) {
+      console.log(`[executeMandateTransaction] Executing PayPal Sandbox 2PC Hold with Vault Token ${vaultId}...`);
+      const authRes = await authorizePayPalVaultPayment({
+        vaultId,
+        amountCents: input.amountCents,
+        description: `Agent Leash 2PC Hold: ${input.merchant}`,
+        referenceId: `leash_${Date.now()}`,
+      });
+
+      if (!authRes.success || !authRes.authorizationId) {
+        return {
+          success: false,
+          decision: "BLOCK",
+          reason: `PayPal Sandbox 2PC Authorization declined: ${authRes.error ?? "No authorization ID returned"}`,
+        };
+      }
+
+      paypalOrderId = authRes.orderId;
+      paypalAuthorizationId = authRes.authorizationId;
+
+      // If direct capture mode: capture the authorization immediately
+      if (input.actionType === "capture") {
+        const capRes = await capturePayPalAuthorization(authRes.authorizationId, input.amountCents);
+        if (!capRes.success) {
+          return {
+            success: false,
+            decision: "BLOCK",
+            reason: `PayPal Sandbox Capture failed: ${capRes.error}`,
+          };
+        }
+        paypalCaptureId = capRes.captureId;
+      }
+    }
+
     let newSpent = found.spentCents;
     let newReserved = found.reservedCents;
 
@@ -624,33 +683,56 @@ export async function executeMandateTransaction(input: {
       .where(eq(mandates.id, found.id));
 
     // Record purchase request
-    const idempotencyKey = `test_req_${randomUUID()}`;
-    await db.insert(purchaseRequests).values({
-      mandateId: found.id,
-      agentId: found.agentId,
-      itemName: input.purpose.slice(0, 100),
-      vendorName: input.merchant,
-      category: input.mcc,
-      amountCents: input.amountCents,
-      currency: "USD",
-      justification: input.purpose,
-      status: input.actionType === "hold" ? "AUTHORIZED" : "CAPTURED",
-      idempotencyKey,
-    });
+    const idempotencyKey = `req_${randomUUID()}`;
+    const [req] = await db
+      .insert(purchaseRequests)
+      .values({
+        mandateId: found.id,
+        agentId: found.agentId,
+        itemName: input.purpose.slice(0, 100),
+        vendorName: input.merchant,
+        category: input.mcc,
+        amountCents: input.amountCents,
+        currency: "USD",
+        justification: input.purpose,
+        status: input.actionType === "hold" ? "AUTHORIZED" : "CAPTURED",
+        idempotencyKey,
+      })
+      .returning();
+
+    // Record real PayPal payment audit entry
+    if (req && paypalOrderId) {
+      await db.insert(paymentRecords).values({
+        purchaseRequestId: req.id,
+        paypalOrderId,
+        paypalAuthorizationId: paypalAuthorizationId ?? null,
+        paypalCaptureId: paypalCaptureId ?? null,
+        paypalRequestId: idempotencyKey,
+        status: input.actionType === "hold" ? "AUTHORIZED" : "CAPTURED",
+        amountCents: input.amountCents,
+        currency: "USD",
+        authorizedAt: new Date(),
+        capturedAt: input.actionType === "capture" ? new Date() : null,
+      });
+    }
 
     revalidatePath("/mandates");
     revalidatePath("/ledger");
     revalidatePath("/");
 
+    const authSnippet = paypalAuthorizationId ? ` (PayPal Auth ID: ${paypalAuthorizationId})` : "";
     return {
       success: true,
       decision: "ALLOW",
       reason:
         input.actionType === "hold"
-          ? `Successfully held $${(input.amountCents / 100).toFixed(2)} in 2PC Escrow reserve!`
-          : `Successfully captured $${(input.amountCents / 100).toFixed(2)}!`,
+          ? `Real PayPal Sandbox 2PC Hold placed! Reserved $${(input.amountCents / 100).toFixed(2)}${authSnippet}. Check Recent Activity on your PayPal Sandbox account!`
+          : `Real PayPal Sandbox Capture executed! Paid $${(input.amountCents / 100).toFixed(2)} (Capture ID: ${paypalCaptureId ?? "N/A"}).`,
       spentCents: newSpent,
       reservedCents: newReserved,
+      ...(paypalOrderId ? { paypalOrderId } : {}),
+      ...(paypalAuthorizationId ? { paypalAuthorizationId } : {}),
+      ...(paypalCaptureId ? { paypalCaptureId } : {}),
     };
   } catch (error: any) {
     console.error("[executeMandateTransaction] error:", error);
