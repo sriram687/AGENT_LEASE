@@ -18,17 +18,19 @@ function VaultButtons({
   onConnected: (tokenId: string, email?: string) => void;
 }) {
   const [{ isPending }] = usePayPalScriptReducer();
-  const [creating, setCreating] = useState(false);
 
   const createOrder = useCallback(async () => {
-    setCreating(true);
-    const res = await createVaultOrder();
-    setCreating(false);
-    if (!res.success || !res.orderId) {
-      toast.error("PayPal Error: " + (res.error ?? "Could not create order"));
-      throw new Error(res.error ?? "no order id");
+    try {
+      const res = await createVaultOrder();
+      if (!res.success || !res.orderId) {
+        toast.error("PayPal Error: " + (res.error ?? "Could not create order"));
+        throw new Error(res.error ?? "no order id");
+      }
+      return res.orderId;
+    } catch (err: any) {
+      console.error("[createOrder] error:", err);
+      throw err;
     }
-    return res.orderId;
   }, []);
 
   const onApprove = useCallback(
@@ -51,7 +53,7 @@ function VaultButtons({
     [onConnected]
   );
 
-  if (isPending || creating) {
+  if (isPending) {
     return (
       <div
         style={{
