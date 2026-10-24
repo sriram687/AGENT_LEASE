@@ -77,7 +77,7 @@ function VaultButtons({
     <PayPalButtons
       style={{
         layout: "vertical",
-        color: "blue",
+        color: "gold",
         shape: "rect",
         label: "paypal",
         height: 48,
