@@ -37,7 +37,7 @@ export default function RootLayout({
             <Sidebar />
             <div style={{ display: "flex", flex: 1, flexDirection: "column", overflow: "hidden", minWidth: 0 }}>
               <TopBar />
-              <main style={{ flex: 1, overflowY: "auto", padding: "28px" }}>{children}</main>
+              <main className="main-content-scroll" style={{ flex: 1, overflowY: "auto", padding: "28px" }}>{children}</main>
             </div>
           </div>
           <Toaster

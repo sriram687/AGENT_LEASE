@@ -4,6 +4,7 @@ import { db, users } from "@leash/db";
 import { eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { generateKeyPair } from "@leash/crypto";
 
 export interface UserProfileData {
   id: string;
@@ -44,15 +45,25 @@ export async function getUserProfile(): Promise<{
 
     if (!userRow) {
       // Seed default operator if empty
+      const keypair = generateKeyPair();
       const [created] = await db
         .insert(users)
         .values({
           name: "Operator",
           email: "operator@agentleash.dev",
           role: "owner",
+          publicKey: keypair.publicKey,
         })
         .returning();
       userRow = created;
+    } else if (!userRow.publicKey) {
+      const keypair = generateKeyPair();
+      const [updated] = await db
+        .update(users)
+        .set({ publicKey: keypair.publicKey, updatedAt: new Date() })
+        .where(eq(users.id, userRow.id))
+        .returning();
+      userRow = updated;
     }
 
     return {
@@ -70,6 +81,45 @@ export async function getUserProfile(): Promise<{
     };
   } catch (error: any) {
     console.error("[getUserProfile] error:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Regenerate operator Ed25519 keypair and save public key in database.
+ * Returns both publicKey and privateKey so operator can copy the signing private key.
+ */
+export async function generateOperatorKeyPair(): Promise<{
+  success: boolean;
+  publicKey?: string;
+  privateKey?: string;
+  error?: string;
+}> {
+  try {
+    const { user: current } = await getUserProfile();
+    if (!current?.id) {
+      return { success: false, error: "Operator not found" };
+    }
+
+    const keypair = generateKeyPair();
+    await db
+      .update(users)
+      .set({
+        publicKey: keypair.publicKey,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, current.id));
+
+    revalidatePath("/settings");
+    revalidatePath("/");
+
+    return {
+      success: true,
+      publicKey: keypair.publicKey,
+      privateKey: keypair.privateKey,
+    };
+  } catch (error: any) {
+    console.error("[generateOperatorKeyPair] error:", error);
     return { success: false, error: error.message };
   }
 }
@@ -104,6 +154,10 @@ export async function updateUserProfile(data: {
       })
       .where(eq(users.id, current.id))
       .returning();
+
+    if (!updated) {
+      return { success: false, error: "Failed to update profile" };
+    }
 
     revalidatePath("/");
     revalidatePath("/settings");

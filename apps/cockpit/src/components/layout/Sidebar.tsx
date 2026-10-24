@@ -28,6 +28,7 @@ export function Sidebar() {
 
   return (
     <aside
+      className="cockpit-sidebar"
       style={{
         display: "flex",
         height: "100%",

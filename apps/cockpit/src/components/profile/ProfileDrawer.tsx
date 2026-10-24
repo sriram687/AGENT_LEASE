@@ -598,6 +598,114 @@ export function ProfileDrawer({
             )}
           </div>
 
+          {/* Section 2.5: Ed25519 Cryptographic Signing Key Card */}
+          <div
+            style={{
+              background: "#ffffff",
+              border: "var(--border-thick)",
+              borderRadius: "var(--radius-lg)",
+              padding: "20px",
+              boxShadow: "var(--shadow-base)",
+              display: "flex",
+              flexDirection: "column",
+              gap: "14px",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <div
+                  style={{
+                    width: "36px",
+                    height: "36px",
+                    borderRadius: "8px",
+                    background: "var(--neo-purple)",
+                    border: "var(--border-medium)",
+                    boxShadow: "2px 2px 0px #121212",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Key size={18} color="#ffffff" />
+                </div>
+                <div>
+                  <h4 style={{ fontSize: "15px", fontWeight: 800, color: "#121212", margin: 0 }}>
+                    Ed25519 Public Key
+                  </h4>
+                  <p style={{ fontSize: "12px", color: "var(--color-ink-muted)", margin: "1px 0 0 0" }}>
+                    Cryptographic mandate signing authority
+                  </p>
+                </div>
+              </div>
+              <span
+                style={{
+                  background: "var(--neo-cream)",
+                  border: "1.5px solid #121212",
+                  padding: "2px 8px",
+                  borderRadius: "var(--radius-pill)",
+                  fontSize: "10px",
+                  fontWeight: 800,
+                }}
+              >
+                ENFORCED
+              </span>
+            </div>
+
+            <div
+              style={{
+                background: "#f8faf5",
+                border: "1.5px solid #cbd5e1",
+                borderRadius: "8px",
+                padding: "12px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "8px",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--color-ink-muted)" }}>
+                  PUBLIC KEY (HEX DER)
+                </span>
+                <button
+                  onClick={() => {
+                    if (profile?.publicKey) {
+                      navigator.clipboard.writeText(profile.publicKey);
+                      toast.success("Public key copied!");
+                    }
+                  }}
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    color: "#4f46e5",
+                    fontSize: "11px",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "4px",
+                  }}
+                >
+                  <Copy size={12} /> Copy
+                </button>
+              </div>
+              <div
+                style={{
+                  fontFamily: "var(--font-mono)",
+                  fontSize: "11px",
+                  fontWeight: 600,
+                  color: "#1e293b",
+                  background: "#ffffff",
+                  padding: "6px 10px",
+                  borderRadius: "6px",
+                  border: "1px solid #e2e8f0",
+                  wordBreak: "break-all",
+                }}
+              >
+                {profile?.publicKey || "No key registered yet"}
+              </div>
+            </div>
+          </div>
+
           {/* Section 3: Scoped Agent API Key Card */}
           <div
             style={{
@@ -756,11 +864,24 @@ export function ProfileDrawer({
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
+            gap: "12px",
           }}
         >
-          <span style={{ fontSize: "11px", color: "#64748b", fontWeight: 600 }}>
-            Agent Leash v0.1.0 • Neo-Shield
-          </span>
+          <a
+            href="/settings"
+            onClick={onClose}
+            style={{
+              fontSize: "12px",
+              color: "#4f46e5",
+              fontWeight: 800,
+              textDecoration: "none",
+              display: "flex",
+              alignItems: "center",
+              gap: "4px",
+            }}
+          >
+            Full Settings Page &rarr;
+          </a>
           <button
             onClick={onClose}
             style={{

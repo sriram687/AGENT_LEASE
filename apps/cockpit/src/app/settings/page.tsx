@@ -1,21 +1,51 @@
 import { Suspense } from "react";
-import { PayPalVaultButton } from "@/components/wallet/PayPalVaultButton";
+import { getUserProfile, getAgentApiKey } from "@/lib/actions/user";
 import { getVaultStatus } from "@/lib/actions/paypal";
-import { Wallet, ShieldCheck, Key, RefreshCcw } from "lucide-react";
+import { OperatorProfileCard } from "@/components/settings/OperatorProfileCard";
+import { AutonomousWalletCard } from "@/components/settings/AutonomousWalletCard";
+import { AgentApiKeyCard } from "@/components/settings/AgentApiKeyCard";
+import { SecurityGuardrailsCard } from "@/components/settings/SecurityGuardrailsCard";
+import { Settings, ShieldCheck, User, Wallet, Key } from "lucide-react";
 
 export const metadata = {
-  title: "Settings & Wallet — Agent Leash",
+  title: "Profile & Settings — Agent Leash",
+  description: "Manage Operator identity, PayPal Vault token, cryptographic keys, and agent access credentials.",
 };
 
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
-  const vaultStatus = await getVaultStatus();
+  const [profileRes, vaultStatus, keyRes] = await Promise.all([
+    getUserProfile(),
+    getVaultStatus(),
+    getAgentApiKey(),
+  ]);
+
+  const profile = profileRes.user ?? {
+    id: "default-operator",
+    name: "Operator",
+    email: "operator@agentleash.dev",
+    role: "owner" as const,
+    publicKey: null,
+    vaultId: vaultStatus.vaultId ?? null,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
   const clientId = process.env["PAYPAL_CLIENT_ID"] ?? "";
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "28px" }} className="animate-fade-in">
-      {/* Header Banner */}
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: "28px",
+        maxWidth: "1280px",
+        margin: "0 auto",
+      }}
+      className="animate-fade-in"
+    >
+      {/* Top Banner */}
       <div
         style={{
           display: "flex",
@@ -26,120 +56,124 @@ export default async function SettingsPage() {
           background: "#ffffff",
           border: "var(--border-thick)",
           borderRadius: "var(--radius-lg)",
-          padding: "20px 24px",
+          padding: "22px 28px",
           boxShadow: "var(--shadow-base)",
         }}
       >
-        <div>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <h1 style={{ fontSize: "24px", fontWeight: 900, color: "#121212", letterSpacing: "-0.02em", margin: 0 }}>
-              SETTINGS & WALLET
-            </h1>
+        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+          <div
+            style={{
+              width: "48px",
+              height: "48px",
+              borderRadius: "12px",
+              background: "var(--neo-yellow)",
+              border: "var(--border-thick)",
+              boxShadow: "var(--shadow-sm)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Settings size={26} color="#121212" strokeWidth={2.5} />
+          </div>
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+              <h1
+                style={{
+                  fontSize: "24px",
+                  fontWeight: 900,
+                  color: "#121212",
+                  letterSpacing: "-0.02em",
+                  margin: 0,
+                }}
+              >
+                PROFILE & OPERATOR SETTINGS
+              </h1>
+              <span
+                style={{
+                  background: "var(--neo-green)",
+                  border: "1.5px solid #121212",
+                  padding: "2px 10px",
+                  borderRadius: "var(--radius-pill)",
+                  fontSize: "11px",
+                  fontWeight: 800,
+                  boxShadow: "1.5px 1.5px 0px #121212",
+                }}
+              >
+                PHASE 1 ACTIVE
+              </span>
+            </div>
+            <p style={{ fontSize: "14px", color: "var(--color-ink-muted)", margin: "4px 0 0 0" }}>
+              Configure administrator profile, Ed25519 signing keypair, PayPal Vault autonomous token, and scoped agent credentials.
+            </p>
+          </div>
+        </div>
+
+        {/* Quick status pill bar */}
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              background: "#f4f6f0",
+              border: "1.5px solid #121212",
+              padding: "4px 12px",
+              borderRadius: "var(--radius-pill)",
+              fontSize: "12px",
+              fontWeight: 700,
+            }}
+          >
             <span
               style={{
-                background: "var(--neo-green)",
-                border: "1.5px solid #121212",
-                padding: "2px 10px",
-                borderRadius: "var(--radius-pill)",
-                fontSize: "11px",
-                fontWeight: 800,
-                boxShadow: "1.5px 1.5px 0px #121212",
+                width: "8px",
+                height: "8px",
+                borderRadius: "50%",
+                background: vaultStatus.connected ? "#10b981" : "#ef4444",
               }}
-            >
-              PAYPAL SANDBOX
-            </span>
+            />
+            <span>Wallet: {vaultStatus.connected ? "Vaulted" : "Unlinked"}</span>
           </div>
-          <p style={{ fontSize: "14px", color: "var(--color-ink-muted)", margin: "4px 0 0 0" }}>
-            Manage payment method authorization, cryptographic identity keys, and agent credentials.
-          </p>
-        </div>
-      </div>
-
-      {/* Main Settings Grid */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "24px" }}>
-        {/* Section 1: PayPal Vault Connection */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-          <h2 style={{ fontSize: "16px", fontWeight: 800, color: "#121212", margin: 0 }}>
-            1. Autonomous Payment Method
-          </h2>
-          <PayPalVaultButton
-            initialConnected={vaultStatus.connected}
-            initialVaultId={vaultStatus.vaultId}
-            clientId={clientId}
-          />
-        </div>
-
-        {/* Section 2: Security & Identity */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-          <h2 style={{ fontSize: "16px", fontWeight: 800, color: "#121212", margin: 0 }}>
-            2. Gateway Security Guardrails
-          </h2>
 
           <div
             style={{
-              background: "#ffffff",
-              border: "var(--border-thick)",
-              borderRadius: "var(--radius-lg)",
-              padding: "24px",
-              boxShadow: "var(--shadow-base)",
               display: "flex",
-              flexDirection: "column",
-              gap: "16px",
+              alignItems: "center",
+              gap: "6px",
+              background: "#f4f6f0",
+              border: "1.5px solid #121212",
+              padding: "4px 12px",
+              borderRadius: "var(--radius-pill)",
+              fontSize: "12px",
+              fontWeight: 700,
             }}
           >
-            <div style={{ display: "flex", alignItems: "flex-start", gap: "12px" }}>
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  width: "36px",
-                  height: "36px",
-                  borderRadius: "8px",
-                  background: "var(--neo-blue)",
-                  border: "1.5px solid #121212",
-                  flexShrink: 0,
-                }}
-              >
-                <ShieldCheck size={20} color="#121212" />
-              </div>
-              <div>
-                <div style={{ fontWeight: 800, fontSize: "14px", color: "#121212" }}>
-                  Vault Token Isolation
-                </div>
-                <div style={{ fontSize: "12px", color: "var(--color-ink-muted)", marginTop: "2px" }}>
-                  The AI agent never sees your PayPal password or cards. Only the Leash Gateway holds your token.
-                </div>
-              </div>
-            </div>
-
-            <div style={{ display: "flex", alignItems: "flex-start", gap: "12px" }}>
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  width: "36px",
-                  height: "36px",
-                  borderRadius: "8px",
-                  background: "var(--neo-pink)",
-                  border: "1.5px solid #121212",
-                  flexShrink: 0,
-                }}
-              >
-                <Key size={20} color="#121212" />
-              </div>
-              <div>
-                <div style={{ fontWeight: 800, fontSize: "14px", color: "#121212" }}>
-                  Two-Phase Commit (2PC)
-                </div>
-                <div style={{ fontSize: "12px", color: "var(--color-ink-muted)", marginTop: "2px" }}>
-                  Funds are held via PayPal Authorization and only captured when delivery proof is acknowledged.
-                </div>
-              </div>
-            </div>
+            <ShieldCheck size={14} color="#059669" />
+            <span>2PC & Ed25519 Active</span>
           </div>
         </div>
+      </div>
+
+      {/* Main Responsive Grid Layout */}
+      <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+        {/* Section 1: Operator Profile & Cryptographic Identity */}
+        <OperatorProfileCard initialProfile={profile} />
+
+        {/* Section 2: Autonomous PayPal Vault Wallet */}
+        <AutonomousWalletCard
+          initialConnected={vaultStatus.connected}
+          initialVaultId={vaultStatus.vaultId ?? null}
+          clientId={clientId}
+        />
+
+        {/* Section 3: Agent API Keys & Credentials */}
+        <AgentApiKeyCard
+          apiKey={keyRes.key}
+          gatewayUrl={keyRes.gatewayUrl}
+        />
+
+        {/* Section 4: Security Guardrails & Health */}
+        <SecurityGuardrailsCard />
       </div>
     </div>
   );

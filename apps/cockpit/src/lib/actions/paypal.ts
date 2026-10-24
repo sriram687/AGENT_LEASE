@@ -302,7 +302,7 @@ export async function createVaultSetupToken(): Promise<{
     return {
       success: true,
       setupTokenId: data.id,
-      approvalUrl: approvalLink?.href,
+      ...(approvalLink?.href ? { approvalUrl: approvalLink.href } : {}),
     };
   } catch (error: any) {
     console.error("[createVaultSetupToken]", error);
@@ -379,7 +379,12 @@ export async function confirmVaultToken(setupTokenId: string): Promise<{
     }
 
     console.log("[confirmVaultToken] Vault token saved:", paymentTokenId);
-    return { success: true, paymentTokenId, payerId, email };
+    return {
+      success: true,
+      paymentTokenId,
+      ...(payerId ? { payerId } : {}),
+      ...(email ? { email } : {}),
+    };
   } catch (error: any) {
     console.error("[confirmVaultToken]", error);
     return { success: false, error: error.message };
@@ -388,7 +393,7 @@ export async function confirmVaultToken(setupTokenId: string): Promise<{
 
 // ─── Disconnect wallet ────────────────────────────────────────────────────────
 
-export async function disconnectWallet(): Promise<{ success: boolean }> {
+export async function disconnectWallet(): Promise<{ success: boolean; error?: string }> {
   try {
     const userId = await getUserId();
     if (userId) {
@@ -398,9 +403,9 @@ export async function disconnectWallet(): Promise<{ success: boolean }> {
         .where(eq(users.id, userId));
     }
     return { success: true };
-  } catch (error) {
+  } catch (error: any) {
     console.error("[disconnectWallet]", error);
-    return { success: false };
+    return { success: false, error: error.message };
   }
 }
 
