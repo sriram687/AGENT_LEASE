@@ -26,11 +26,20 @@ export function SpendChart({ data }: SpendChartProps) {
           },
         },
       },
-      data: data.map((d) => ({
-        date: new Date(d.date),
-        spent: d.spentCents / 100,
-        reserved: d.reservedCents / 100,
-      })),
+      data:
+        data.length > 0
+          ? data.map((d) => ({
+              date: new Date(d.date),
+              spent: d.spentCents / 100,
+              reserved: d.reservedCents / 100,
+            }))
+          : [
+              {
+                date: new Date(),
+                spent: 0,
+                reserved: 0,
+              },
+            ],
       series: [
         {
           type: "area" as const,

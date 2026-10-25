@@ -361,7 +361,7 @@ async function evaluateScenario(
 
   const recentSmall = _context.recentSmallSpendCents ?? 0;
   const structuringDetected =
-    recentSmall + request.amountCents >= mandate.escalateAboveCents * 2;
+    recentSmall + request.amountCents > mandate.escalateAboveCents;
   if (structuringDetected) failedRules.push("structuring_detected");
 
   // Injection check
@@ -372,6 +372,8 @@ async function evaluateScenario(
     /DAN\s+mode/i,
     /jailbreak/i,
     /\[SYSTEM:/i,
+    /(rules?|mandate|budget)\s+are\s+(now\s+)?void/i,
+    /note\s+to\s+ai/i,
   ];
   const textToScan = [
     request.itemName,

@@ -29,5 +29,6 @@ export const db = new Proxy({} as PostgresJsDatabase<typeof schema>, {
 
 export type DB = typeof db;
 
-// Re-export schema for consumers
+// Re-export schema and drizzle-orm primitives for consumers
 export * from "./schema/index";
+export * from "drizzle-orm";

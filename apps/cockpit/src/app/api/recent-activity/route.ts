@@ -1,20 +1,42 @@
 import { NextResponse } from "next/server";
+import { db, purchaseRequests } from "@leash/db";
+import { desc } from "drizzle-orm";
 
-// Returns recent purchase request decisions from the gateway
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   try {
-    const gatewayUrl = process.env["LEASH_GATEWAY_URL"] ?? "http://localhost:3000";
-    const res = await fetch(`${gatewayUrl}/api/recent-activity`, {
-      headers: {
-        "x-internal-secret": process.env["LEASH_INTERNAL_SECRET"] ?? "",
-      },
-      next: { revalidate: 10 },
+    const rows = await db
+      .select({
+        id: purchaseRequests.id,
+        item: purchaseRequests.itemName,
+        amountCents: purchaseRequests.amountCents,
+        status: purchaseRequests.status,
+        timestamp: purchaseRequests.requestedAt,
+        justification: purchaseRequests.justification,
+      })
+      .from(purchaseRequests)
+      .orderBy(desc(purchaseRequests.requestedAt))
+      .limit(10);
+
+    const formatted = rows.map((r) => {
+      let type: "APPROVE" | "DENY" | "ESCALATE" = "APPROVE";
+      if (r.status === "REJECTED") type = "DENY";
+      else if (r.status === "ESCALATED") type = "ESCALATE";
+
+      return {
+        id: r.id,
+        type,
+        item: r.item,
+        amountCents: r.amountCents,
+        timestamp: r.timestamp.toISOString(),
+        justification: r.justification ?? undefined,
+      };
     });
-    if (!res.ok) return NextResponse.json([]);
-    const data = await res.json();
-    return NextResponse.json(data);
-  } catch {
-    // Gateway not running — return empty list
+
+    return NextResponse.json(formatted);
+  } catch (err: any) {
+    console.error("[api/recent-activity] Error:", err);
     return NextResponse.json([]);
   }
 }

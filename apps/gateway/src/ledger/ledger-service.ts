@@ -5,7 +5,6 @@
  * All writes are append-only and hash-chained.
  */
 import type { DB } from "@leash/db";
-import type { LedgerEntryType } from "@leash/db";
 
 export class LedgerService {
   constructor(private readonly db: DB) {}

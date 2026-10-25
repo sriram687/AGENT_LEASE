@@ -1,20 +1,19 @@
 import { NextResponse } from "next/server";
+import { verifyLedgerIntegrity } from "@/lib/actions/ledger";
 
-// Returns ledger chain integrity status from the gateway
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   try {
-    const gatewayUrl = process.env["LEASH_GATEWAY_URL"] ?? "http://localhost:3000";
-    const res = await fetch(`${gatewayUrl}/api/chain-status`, {
-      headers: {
-        "x-internal-secret": process.env["LEASH_INTERNAL_SECRET"] ?? "",
-      },
-      next: { revalidate: 30 },
+    const res = await verifyLedgerIntegrity();
+    return NextResponse.json({
+      totalEntries: res.totalBlocks,
+      isValid: res.valid,
+      latestHash: res.latestHash,
+      lastChecked: new Date().toISOString(),
     });
-    if (!res.ok) throw new Error("Gateway unavailable");
-    const data = await res.json();
-    return NextResponse.json(data);
-  } catch {
-    // Gateway not running — return safe defaults
+  } catch (error: any) {
+    console.error("[api/chain-status] Error verifying integrity:", error);
     return NextResponse.json({
       totalEntries: 0,
       isValid: true,

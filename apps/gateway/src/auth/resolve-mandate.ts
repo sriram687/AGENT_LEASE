@@ -7,8 +7,7 @@
  * Zero-trust: every request is authenticated. No agent is implicitly trusted.
  */
 import type { DB } from "@leash/db";
-import { agents, mandates } from "@leash/db";
-import { eq } from "drizzle-orm";
+import { agents, mandates, eq } from "@leash/db";
 // TODO: import bcrypt or argon2 for key comparison
 
 export async function resolveAgentMandate(

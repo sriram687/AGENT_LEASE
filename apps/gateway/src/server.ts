@@ -20,6 +20,7 @@ import { mcpRouter } from "./routes/mcp.js";
 import { webhookRouter } from "./routes/webhooks.js";
 import { escalationRouter } from "./routes/escalations.js";
 import { mandateRouter } from "./routes/mandates.js";
+import { purchaseRouter } from "./routes/purchase.js";
 
 const app = new Hono();
 
@@ -29,6 +30,7 @@ app.route("/mcp", mcpRouter);
 app.route("/webhooks", webhookRouter);
 app.route("/api/escalations", escalationRouter);
 app.route("/api/mandates", mandateRouter);
+app.route("/api/purchase", purchaseRouter);
 
 const port = Number(process.env["PORT"] ?? 3000);
 
