@@ -22,6 +22,7 @@ import {
   signPayload,
   verifySignature,
 } from "@leash/crypto";
+import { appendLedgerEntry } from "./ledger";
 import { randomUUID } from "node:crypto";
 
 export interface MandateWithAgent {
@@ -328,7 +329,27 @@ export async function createMandate(input: CreateMandateInput): Promise<{
       return { success: false, error: "Failed to persist mandate in database" };
     }
 
+    // Append immutable cryptographic ledger entry
+    await appendLedgerEntry({
+      mandateId: created.id,
+      entryType: "MANDATE_CREATED",
+      entityType: "mandate",
+      entityId: created.id,
+      payload: {
+        id: created.id,
+        purpose: created.purpose,
+        totalBudgetCents: created.totalBudgetCents,
+        perPurchaseCapCents: created.perPurchaseCapCents,
+        escalateAboveCents: created.escalateAboveCents,
+        allowedCategories: created.allowedCategories,
+        merchantAllowlist: created.merchantAllowlist,
+      },
+      actorType: "operator",
+      actorId: operator.id,
+    });
+
     revalidatePath("/mandates");
+    revalidatePath("/ledger");
     revalidatePath("/");
 
     return {
@@ -702,18 +723,60 @@ export async function executeMandateTransaction(input: {
 
     // Record real PayPal payment audit entry
     if (req && paypalOrderId) {
-      await db.insert(paymentRecords).values({
-        purchaseRequestId: req.id,
-        paypalOrderId,
-        paypalAuthorizationId: paypalAuthorizationId ?? null,
-        paypalCaptureId: paypalCaptureId ?? null,
-        paypalRequestId: idempotencyKey,
-        status: input.actionType === "hold" ? "AUTHORIZED" : "CAPTURED",
-        amountCents: input.amountCents,
-        currency: "USD",
-        authorizedAt: new Date(),
-        capturedAt: input.actionType === "capture" ? new Date() : null,
+      const [payment] = await db
+        .insert(paymentRecords)
+        .values({
+          purchaseRequestId: req.id,
+          paypalOrderId,
+          paypalAuthorizationId: paypalAuthorizationId ?? null,
+          paypalCaptureId: paypalCaptureId ?? null,
+          paypalRequestId: idempotencyKey,
+          status: input.actionType === "hold" ? "AUTHORIZED" : "CAPTURED",
+          amountCents: input.amountCents,
+          currency: "USD",
+          authorizedAt: new Date(),
+          capturedAt: input.actionType === "capture" ? new Date() : null,
+        })
+        .returning();
+
+      // Append ledger entries
+      await appendLedgerEntry({
+        mandateId: found.id,
+        entryType: "REQUEST_RECEIVED",
+        entityType: "purchase_request",
+        entityId: req.id,
+        payload: {
+          id: req.id,
+          itemName: req.itemName,
+          vendorName: req.vendorName,
+          amountCents: req.amountCents,
+          category: req.category,
+          justification: req.justification,
+        },
+        actorType: "agent",
+        actorId: found.agentId,
       });
+
+      if (payment) {
+        await appendLedgerEntry({
+          mandateId: found.id,
+          entryType: input.actionType === "hold" ? "PAYMENT_AUTHORIZED" : "PAYMENT_CAPTURED",
+          entityType: "payment_record",
+          entityId: payment.id,
+          payload: {
+            id: payment.id,
+            purchaseRequestId: req.id,
+            paypalOrderId,
+            paypalAuthorizationId: paypalAuthorizationId ?? null,
+            paypalCaptureId: paypalCaptureId ?? null,
+            amountCents: input.amountCents,
+            currency: "USD",
+            status: payment.status,
+          },
+          actorType: "system",
+          actorId: "paypal_gateway",
+        });
+      }
     }
 
     revalidatePath("/mandates");

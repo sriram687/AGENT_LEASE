@@ -1,6 +1,6 @@
 import { db } from "@leash/db";
 import { ledgerEntries, mandates } from "@leash/db";
-import { eq, desc, sql } from "drizzle-orm";
+import { eq, desc, asc, sql } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 
 export interface SpendTimelinePoint {
@@ -55,11 +55,10 @@ export async function getSpendTimeline(): Promise<SpendTimelinePoint[]> {
   }
 }
 
-export async function getLedgerEntries(mandateId: string) {
-  return db
-    .select()
-    .from(ledgerEntries)
-    .where(eq(ledgerEntries.mandateId, mandateId))
-    .orderBy(desc(ledgerEntries.sequence))
-    .limit(500);
+export async function getLedgerEntries(mandateId?: string) {
+  let query = db.select().from(ledgerEntries);
+  if (mandateId) {
+    query = (query as any).where(eq(ledgerEntries.mandateId, mandateId));
+  }
+  return query.orderBy(asc(ledgerEntries.sequence)).limit(500);
 }

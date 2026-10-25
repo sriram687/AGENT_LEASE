@@ -11,6 +11,7 @@ import {
 import { eq } from "drizzle-orm";
 import { getUserProfile } from "./user";
 import { authorizePayPalVaultPayment } from "./paypal";
+import { appendLedgerEntry } from "./ledger";
 import { randomUUID } from "node:crypto";
 
 export async function approveEscalation(
@@ -119,6 +120,25 @@ export async function approveEscalation(
       })
       .where(eq(mandates.id, mandate.id));
 
+    // 7. Append immutable cryptographic ledger entry
+    await appendLedgerEntry({
+      mandateId: mandate.id,
+      entryType: "ESCALATION_RESOLVED",
+      entityType: "escalation",
+      entityId: escalationId,
+      payload: {
+        escalationId,
+        purchaseRequestId: purchaseRequest.id,
+        decision: "APPROVED",
+        amountCents: purchaseRequest.amountCents,
+        paypalOrderId: authRes.orderId,
+        paypalAuthorizationId: authRes.authorizationId,
+        humanComment: comment?.trim() || null,
+      },
+      actorType: "operator",
+      actorId: operator?.id ?? "operator",
+    });
+
     revalidatePath("/escalations");
     revalidatePath("/mandates");
     revalidatePath("/ledger");
@@ -181,6 +201,23 @@ export async function rejectEscalation(
         reviewedAt: new Date(),
       })
       .where(eq(escalations.id, escalationId));
+
+    // Append cryptographic ledger entry
+    await appendLedgerEntry({
+      mandateId: esc.purchaseRequest.mandateId,
+      entryType: "ESCALATION_RESOLVED",
+      entityType: "escalation",
+      entityId: escalationId,
+      payload: {
+        escalationId,
+        purchaseRequestId: esc.purchaseRequest.id,
+        decision: "REJECTED",
+        amountCents: esc.purchaseRequest.amountCents,
+        humanComment: comment?.trim() || null,
+      },
+      actorType: "operator",
+      actorId: operator?.id ?? "operator",
+    });
 
     revalidatePath("/escalations");
     revalidatePath("/mandates");
@@ -253,8 +290,44 @@ export async function triggerDemoEscalation(targetMandateId?: string): Promise<{
       })
       .returning();
 
+    // Append cryptographic ledger entries
+    await appendLedgerEntry({
+      mandateId: mandate.id,
+      entryType: "REQUEST_RECEIVED",
+      entityType: "purchase_request",
+      entityId: req.id,
+      payload: {
+        id: req.id,
+        itemName: req.itemName,
+        vendorName: req.vendorName,
+        amountCents: req.amountCents,
+        category: req.category,
+        justification: req.justification,
+      },
+      actorType: "agent",
+      actorId: mandate.agentId,
+    });
+
+    if (esc) {
+      await appendLedgerEntry({
+        mandateId: mandate.id,
+        entryType: "ESCALATION_CREATED",
+        entityType: "escalation",
+        entityId: esc.id,
+        payload: {
+          id: esc.id,
+          purchaseRequestId: req.id,
+          amountCents: req.amountCents,
+          reason: esc.leashReasoning,
+        },
+        actorType: "system",
+        actorId: "leash_policy_engine",
+      });
+    }
+
     revalidatePath("/escalations");
     revalidatePath("/mandates");
+    revalidatePath("/ledger");
     revalidatePath("/");
 
     return {

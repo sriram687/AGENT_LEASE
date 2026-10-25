@@ -1,28 +1,20 @@
 import { LedgerGrid } from "@/components/ledger/LedgerGrid";
 import { getLedgerEntries } from "@/lib/api/ledger";
+import { syncLedgerFromDatabase } from "@/lib/actions/ledger";
 import { verifyChain } from "@leash/crypto";
-import { db } from "@leash/db";
-import { mandates } from "@leash/db";
-import { eq } from "drizzle-orm";
-import { auth } from "@/lib/auth";
 import { Check, ShieldAlert } from "lucide-react";
 
 export const metadata = { title: "Ledger — Agent Leash" };
 export const dynamic = "force-dynamic";
 
 export default async function LedgerPage() {
-  const session = await auth();
-  const userId = session?.user?.id;
+  let entries = await getLedgerEntries();
 
-  const [mandate] = userId
-    ? await db
-        .select({ id: mandates.id })
-        .from(mandates)
-        .where(eq(mandates.ownerId, userId))
-        .limit(1)
-    : [null];
-
-  const entries = mandate ? await getLedgerEntries(mandate.id) : [];
+  // If ledger is empty, automatically sync and replay from database
+  if (entries.length === 0) {
+    await syncLedgerFromDatabase();
+    entries = await getLedgerEntries();
+  }
 
   // Verify chain integrity server-side
   const chainResult = verifyChain(
@@ -42,6 +34,7 @@ export default async function LedgerPage() {
     actorType: e.actorType,
     entryHash: e.entryHash,
     previousHash: e.previousHash,
+    payload: e.payload,
     createdAt: e.createdAt.toISOString(),
   }));
 
