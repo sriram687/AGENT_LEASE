@@ -29,6 +29,7 @@ interface MandateCardProps {
   mandate: MandateWithAgent;
   onInspectSignature: (mandate: MandateWithAgent) => void;
   onSimulate: (mandate: MandateWithAgent) => void;
+  onOpenHolds?: (mandate: MandateWithAgent) => void;
   onStatusChanged?: () => void;
   onUpdated?: (updated?: Partial<MandateWithAgent> & { id: string }) => void;
 }
@@ -37,6 +38,7 @@ export function MandateCard({
   mandate,
   onInspectSignature,
   onSimulate,
+  onOpenHolds,
   onStatusChanged,
   onUpdated,
 }: MandateCardProps) {
@@ -268,24 +270,59 @@ export function MandateCard({
               title={`Spent: $${spentDollars}`}
             />
             <div
+              onClick={() => mandate.reservedCents > 0 && onOpenHolds && onOpenHolds(mandate)}
               style={{
                 width: `${reservedPct}%`,
                 background: "var(--neo-blue)",
                 transition: "width 0.3s ease",
+                cursor: mandate.reservedCents > 0 ? "pointer" : "default",
               }}
-              title={`Reserved in Escrow: $${reservedDollars}`}
+              title={
+                mandate.reservedCents > 0
+                  ? `Click to view and capture $${reservedDollars} active hold`
+                  : `Reserved in Escrow: $${reservedDollars}`
+              }
             />
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "11px", color: "#64748b" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "11px", color: "#64748b", flexWrap: "wrap", gap: "6px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
               <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: "var(--neo-green)", display: "inline-block", border: "1px solid #121212" }} />
               <span>Captured: ${spentDollars}</span>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
-              <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: "var(--neo-blue)", display: "inline-block", border: "1px solid #121212" }} />
-              <span>Reserved (Holds): ${reservedDollars}</span>
-            </div>
+
+            {mandate.reservedCents > 0 ? (
+              <button
+                onClick={() => onOpenHolds && onOpenHolds(mandate)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "5px",
+                  background: "var(--neo-blue-light)",
+                  border: "1.5px solid var(--neo-blue)",
+                  borderRadius: "var(--radius-pill)",
+                  padding: "1px 8px",
+                  cursor: "pointer",
+                  color: "#1e40af",
+                  fontWeight: 800,
+                  fontSize: "11px",
+                  transition: "transform 0.1s ease",
+                }}
+                title="Click to Open Active Holds Drawer & Confirm Delivery"
+              >
+                <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: "var(--neo-blue)", display: "inline-block", border: "1px solid #121212" }} />
+                <span>Reserved: ${reservedDollars}</span>
+                <span style={{ fontSize: "9px", background: "var(--neo-blue)", color: "#ffffff", padding: "1px 5px", borderRadius: "4px", fontWeight: 900 }}>
+                  💸 Capture
+                </span>
+              </button>
+            ) : (
+              <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+                <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: "var(--neo-blue)", display: "inline-block", border: "1px solid #121212" }} />
+                <span>Reserved (Holds): ${reservedDollars}</span>
+              </div>
+            )}
+
             <div style={{ fontWeight: 700, color: "#121212" }}>
               Available: ${(mandate.availableCents / 100).toFixed(2)}
             </div>
@@ -396,6 +433,30 @@ export function MandateCard({
         </button>
 
         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          {/* Active 2PC Escrow Hold Capture Button */}
+          {mandate.reservedCents > 0 && (
+            <button
+              onClick={() => onOpenHolds && onOpenHolds(mandate)}
+              style={{
+                padding: "5px 12px",
+                background: "var(--neo-green)",
+                border: "1.5px solid #121212",
+                borderRadius: "var(--radius-pill)",
+                fontSize: "12px",
+                fontWeight: 900,
+                color: "#121212",
+                cursor: "pointer",
+                boxShadow: "var(--shadow-sm)",
+                display: "flex",
+                alignItems: "center",
+                gap: "5px",
+              }}
+              title="Click to open Active Holds Drawer & confirm capture"
+            >
+              💸 Confirm Delivery (${reservedDollars})
+            </button>
+          )}
+
           {/* Reset spend button if spend > 0 */}
           {(mandate.spentCents > 0 || mandate.reservedCents > 0) && (
             <button

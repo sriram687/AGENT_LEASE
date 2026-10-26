@@ -18,6 +18,7 @@ import { MandateCard } from "./MandateCard";
 import { CreateMandateModal } from "./CreateMandateModal";
 import { MandateSimulatorModal } from "./MandateSimulatorModal";
 import { SignatureInspectionModal } from "./SignatureInspectionModal";
+import { ActiveHoldsDrawer } from "@/components/holds/ActiveHoldsDrawer";
 import { useRouter } from "next/navigation";
 
 interface MandatesViewProps {
@@ -39,6 +40,8 @@ export function MandatesView({ initialMandates }: MandatesViewProps) {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [inspectMandate, setInspectMandate] = useState<MandateWithAgent | null>(null);
   const [simulateMandate, setSimulateMandate] = useState<MandateWithAgent | null>(null);
+  const [isHoldsDrawerOpen, setIsHoldsDrawerOpen] = useState(false);
+  const [filterMandateId, setFilterMandateId] = useState<string | undefined>(undefined);
 
   // Aggregated metrics
   const totalAllocatedCents = mandates.reduce((acc, m) => acc + m.totalBudgetCents, 0);
@@ -255,13 +258,55 @@ export function MandatesView({ initialMandates }: MandatesViewProps) {
             borderRadius: "var(--radius-md)",
             padding: "16px 20px",
             boxShadow: "var(--shadow-base)",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
           }}
         >
-          <span style={{ fontSize: "11px", fontWeight: 800, color: "#0284c7", textTransform: "uppercase" }}>
-            OPEN 2PC HOLDS (ESCROW)
-          </span>
-          <div style={{ fontSize: "24px", fontWeight: 900, color: "#0284c7", marginTop: "2px" }}>
-            ${(totalReservedCents / 100).toFixed(2)}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <span style={{ fontSize: "11px", fontWeight: 800, color: "#0284c7", textTransform: "uppercase" }}>
+              OPEN 2PC HOLDS (ESCROW)
+            </span>
+            {totalReservedCents > 0 && (
+              <span
+                style={{
+                  background: "var(--neo-blue)",
+                  color: "#ffffff",
+                  fontSize: "10px",
+                  fontWeight: 900,
+                  padding: "1px 6px",
+                  borderRadius: "var(--radius-pill)",
+                }}
+              >
+                ACTIVE
+              </span>
+            )}
+          </div>
+          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginTop: "4px" }}>
+            <div style={{ fontSize: "24px", fontWeight: 900, color: "#0284c7" }}>
+              ${(totalReservedCents / 100).toFixed(2)}
+            </div>
+            {totalReservedCents > 0 && (
+              <button
+                onClick={() => {
+                  setFilterMandateId(undefined);
+                  setIsHoldsDrawerOpen(true);
+                }}
+                style={{
+                  background: "var(--neo-green)",
+                  border: "1.5px solid #121212",
+                  borderRadius: "var(--radius-pill)",
+                  padding: "3px 10px",
+                  fontSize: "11px",
+                  fontWeight: 900,
+                  cursor: "pointer",
+                  color: "#121212",
+                  boxShadow: "1px 1px 0px #121212",
+                }}
+              >
+                💸 Confirm & Capture &rarr;
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -339,6 +384,10 @@ export function MandatesView({ initialMandates }: MandatesViewProps) {
               mandate={mandate}
               onInspectSignature={(m) => setInspectMandate(m)}
               onSimulate={(m) => setSimulateMandate(m)}
+              onOpenHolds={(m) => {
+                setFilterMandateId(m.id);
+                setIsHoldsDrawerOpen(true);
+              }}
               onStatusChanged={() => handleUpdateMandate()}
               onUpdated={handleUpdateMandate}
             />
@@ -410,6 +459,20 @@ export function MandatesView({ initialMandates }: MandatesViewProps) {
         mandate={simulateMandate}
         onClose={() => setSimulateMandate(null)}
         onUpdated={handleUpdateMandate}
+      />
+
+      {/* Active Holds Drawer */}
+      <ActiveHoldsDrawer
+        isOpen={isHoldsDrawerOpen}
+        onClose={() => {
+          setIsHoldsDrawerOpen(false);
+          setFilterMandateId(undefined);
+        }}
+        mandateIdFilter={filterMandateId}
+        onHoldCaptured={() => {
+          setIsHoldsDrawerOpen(false);
+          handleUpdateMandate();
+        }}
       />
     </div>
   );

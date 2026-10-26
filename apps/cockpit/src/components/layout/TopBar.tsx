@@ -20,6 +20,8 @@ import {
 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { ProfileDrawer } from "@/components/profile/ProfileDrawer";
+import { NotificationBell } from "@/components/layout/NotificationBell";
+import { ActiveHoldsDrawer } from "@/components/holds/ActiveHoldsDrawer";
 
 const NAV_ITEMS = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -35,6 +37,7 @@ export function TopBar() {
   const pathname = usePathname();
   const { data: session } = useSession();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isHoldsDrawerOpen, setIsHoldsDrawerOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [operatorName, setOperatorName] = useState<string | null>(null);
 
@@ -134,39 +137,8 @@ export function TopBar() {
             <span>Ed25519 Enforced</span>
           </div>
 
-          {/* Notification bell pill */}
-          <button
-            id="notification-bell"
-            aria-label="View notifications"
-            style={{
-              position: "relative",
-              display: "flex",
-              height: "40px",
-              width: "40px",
-              alignItems: "center",
-              justifyContent: "center",
-              borderRadius: "var(--radius-pill)",
-              background: "#ffffff",
-              border: "var(--border-medium)",
-              boxShadow: "var(--shadow-sm)",
-              cursor: "pointer",
-              transition: "transform 0.1s ease",
-            }}
-          >
-            <Bell size={18} color="#121212" strokeWidth={2.2} />
-            <span
-              style={{
-                position: "absolute",
-                right: "2px",
-                top: "2px",
-                height: "10px",
-                width: "10px",
-                borderRadius: "50%",
-                background: "var(--neo-orange)",
-                border: "1.5px solid #121212",
-              }}
-            />
-          </button>
+          {/* Interactive Notification Bell */}
+          <NotificationBell onOpenHoldsDrawer={() => setIsHoldsDrawerOpen(true)} />
 
           {/* Interactive Operator Profile button */}
           <button
@@ -367,6 +339,16 @@ export function TopBar() {
         isOpen={isProfileOpen}
         onClose={() => setIsProfileOpen(false)}
         onProfileUpdated={(newName) => setOperatorName(newName)}
+      />
+
+      {/* Active 2PC Holds Drawer */}
+      <ActiveHoldsDrawer
+        isOpen={isHoldsDrawerOpen}
+        onClose={() => setIsHoldsDrawerOpen(false)}
+        onHoldCaptured={() => {
+          setIsHoldsDrawerOpen(false);
+          window.location.reload();
+        }}
       />
     </>
   );
