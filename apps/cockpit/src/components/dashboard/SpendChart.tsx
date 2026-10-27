@@ -97,23 +97,15 @@ export function SpendChart({ data }: SpendChartProps) {
                   ? params.xValue.toLocaleDateString("en-US", {
                       month: "short",
                       day: "numeric",
-                      year: "numeric",
                     })
                   : String(params.xValue);
-              return `
-                <div style="background: #18181b; color: #ffffff; padding: 10px 14px; border: 2px solid #121212; border-radius: 8px; box-shadow: 3px 3px 0px #121212; min-width: 175px; font-family: sans-serif;">
-                  <div style="font-size: 10.5px; font-weight: 800; color: #a1a1aa; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 5px;">
-                    ${dateStr}
-                  </div>
-                  <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px;">
-                    <div style="display: flex; align-items: center; gap: 6px;">
-                      <span style="width: 8px; height: 8px; border-radius: 50%; background: #818cf8; display: inline-block;"></span>
-                      <span style="font-size: 12px; font-weight: 700; color: #f4f4f5;">Captured Spend:</span>
-                    </div>
-                    <span style="font-size: 13.5px; font-weight: 900; color: #a5b4fc;">$${Number(params.yValue).toFixed(2)}</span>
-                  </div>
-                </div>
-              `;
+              const val = Number(params.yValue ?? 0).toFixed(2);
+              return {
+                title: "Captured Spend ($)",
+                content: `${dateStr}: $${val}`,
+                color: "#121212",
+                backgroundColor: "#e0e7ff",
+              };
             },
           },
         },
@@ -140,23 +132,15 @@ export function SpendChart({ data }: SpendChartProps) {
                   ? params.xValue.toLocaleDateString("en-US", {
                       month: "short",
                       day: "numeric",
-                      year: "numeric",
                     })
                   : String(params.xValue);
-              return `
-                <div style="background: #18181b; color: #ffffff; padding: 10px 14px; border: 2px solid #121212; border-radius: 8px; box-shadow: 3px 3px 0px #121212; min-width: 175px; font-family: sans-serif;">
-                  <div style="font-size: 10.5px; font-weight: 800; color: #a1a1aa; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 5px;">
-                    ${dateStr}
-                  </div>
-                  <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px;">
-                    <div style="display: flex; align-items: center; gap: 6px;">
-                      <span style="width: 8px; height: 8px; border-radius: 50%; background: #fbbf24; display: inline-block;"></span>
-                      <span style="font-size: 12px; font-weight: 700; color: #f4f4f5;">Reserved (Holds):</span>
-                    </div>
-                    <span style="font-size: 13.5px; font-weight: 900; color: #fde047;">$${Number(params.yValue).toFixed(2)}</span>
-                  </div>
-                </div>
-              `;
+              const val = Number(params.yValue ?? 0).toFixed(2);
+              return {
+                title: "Reserved in Escrow ($)",
+                content: `${dateStr}: $${val}`,
+                color: "#121212",
+                backgroundColor: "#fef3c7",
+              };
             },
           },
         },
@@ -198,7 +182,6 @@ export function SpendChart({ data }: SpendChartProps) {
       },
       tooltip: {
         enabled: true,
-        darkTheme: true,
       },
     }),
     [chartData, yAxisMax]
