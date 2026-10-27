@@ -295,13 +295,15 @@ export function ActiveHoldsDrawer({
 
         {/* Content Body */}
         <div
+
           style={{
-            flex: 1,
+            flex: "1 1 0%",
+            minHeight: 0,
             overflowY: "auto",
             padding: "20px 24px",
             display: "flex",
             flexDirection: "column",
-            gap: "18px",
+            gap: "20px",
           }}
         >
           {/* Explanation Callout */}
@@ -314,6 +316,7 @@ export function ActiveHoldsDrawer({
               display: "flex",
               alignItems: "flex-start",
               gap: "10px",
+              flexShrink: 0,
             }}
           >
             <ShieldCheck size={18} color="#0284c7" style={{ flexShrink: 0, marginTop: "2px" }} />
@@ -388,6 +391,7 @@ export function ActiveHoldsDrawer({
                   overflow: "hidden",
                   display: "flex",
                   flexDirection: "column",
+                  flexShrink: 0,
                   transition: "transform 0.15s ease",
                 }}
               >
@@ -411,11 +415,13 @@ export function ActiveHoldsDrawer({
                           fontSize: "11px",
                           fontWeight: 900,
                           color: "#1e3a8a",
-                          background: "var(--neo-blue-light)",
-                          border: "1px solid #93c5fd",
-                          padding: "1px 6px",
-                          borderRadius: "4px",
+                          background: "#ffffff",
+                          border: "1.5px solid #121212",
+                          padding: "2px 8px",
+                          borderRadius: "var(--radius-pill)",
                           textTransform: "uppercase",
+                          letterSpacing: "0.02em",
+                          boxShadow: "1px 1px 0px #121212",
                         }}
                       >
                         {hold.agentName}
@@ -423,7 +429,7 @@ export function ActiveHoldsDrawer({
                     </div>
                     <h4
                       style={{
-                        fontSize: "15px",
+                        fontSize: "16px",
                         fontWeight: 900,
                         color: "#121212",
                         margin: "4px 0 0 0",
@@ -436,9 +442,9 @@ export function ActiveHoldsDrawer({
                   <div style={{ textAlign: "right" }}>
                     <div
                       style={{
-                        fontSize: "20px",
+                        fontSize: "22px",
                         fontWeight: 900,
-                        color: "var(--neo-blue)",
+                        color: "#0f172a",
                         letterSpacing: "-0.02em",
                       }}
                     >
@@ -446,10 +452,11 @@ export function ActiveHoldsDrawer({
                     </div>
                     <span
                       style={{
-                        fontSize: "10px",
-                        fontWeight: 800,
-                        color: "#0284c7",
+                        fontSize: "10.5px",
+                        fontWeight: 900,
+                        color: "#0369a1",
                         textTransform: "uppercase",
+                        letterSpacing: "0.03em",
                       }}
                     >
                       29-Day Hold Active
@@ -458,17 +465,31 @@ export function ActiveHoldsDrawer({
                 </div>
 
                 {/* Hold Details Body */}
-                <div style={{ padding: "16px 18px", display: "flex", flexDirection: "column", gap: "12px" }}>
+                <div style={{ padding: "16px 18px", display: "flex", flexDirection: "column", gap: "12px", background: "#ffffff" }}>
                   {/* Item Description */}
                   <div>
-                    <span style={{ fontSize: "11px", fontWeight: 800, color: "#64748b", textTransform: "uppercase" }}>
+                    <span
+                      style={{
+                        fontSize: "11px",
+                        fontWeight: 900,
+                        color: "#334155",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.05em",
+                        background: "#f1f5f9",
+                        border: "1px solid #cbd5e1",
+                        padding: "2px 8px",
+                        borderRadius: "4px",
+                        display: "inline-block",
+                        marginBottom: "4px",
+                      }}
+                    >
                       ITEM & COMPUTE WORKLOAD
                     </span>
-                    <p style={{ fontSize: "13px", fontWeight: 600, color: "#1e293b", margin: "2px 0 0 0" }}>
+                    <p style={{ fontSize: "14px", fontWeight: 700, color: "#0f172a", margin: "2px 0 0 0", lineHeight: 1.4 }}>
                       {hold.itemName}
                     </p>
                     {hold.justification && (
-                      <p style={{ fontSize: "12px", color: "#64748b", margin: "2px 0 0 0", fontStyle: "italic" }}>
+                      <p style={{ fontSize: "12px", color: "#475569", margin: "3px 0 0 0", fontStyle: "italic", lineHeight: 1.4 }}>
                         &ldquo;{hold.justification}&rdquo;
                       </p>
                     )}
@@ -477,8 +498,8 @@ export function ActiveHoldsDrawer({
                   {/* PayPal Identifiers Strip */}
                   <div
                     style={{
-                      background: "#f8faf5",
-                      border: "1.5px solid #e2e8f0",
+                      background: "#f8fafc",
+                      border: "1.5px solid #cbd5e1",
                       borderRadius: "var(--radius-sm)",
                       padding: "10px 12px",
                       display: "flex",
@@ -487,18 +508,19 @@ export function ActiveHoldsDrawer({
                     }}
                   >
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "11px" }}>
-                      <span style={{ color: "#64748b", fontWeight: 700 }}>PayPal Auth ID:</span>
+                      <span style={{ color: "#475569", fontWeight: 700 }}>PayPal Auth ID:</span>
                       <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
-                        <code style={{ fontWeight: 800, color: "#0f172a", fontFamily: "var(--font-mono)" }}>
+                        <code style={{ fontWeight: 800, color: "#0f172a", fontFamily: "var(--font-mono)", background: "#ffffff", padding: "1px 6px", borderRadius: "4px", border: "1px solid #cbd5e1" }}>
                           {hold.paypalAuthorizationId.slice(0, 16)}...
                         </code>
                         <button
                           onClick={() => copyToClipboard(hold.paypalAuthorizationId, hold.paymentRecordId)}
                           style={{
-                            background: "transparent",
-                            border: "none",
+                            background: "#ffffff",
+                            border: "1px solid #cbd5e1",
+                            borderRadius: "4px",
                             cursor: "pointer",
-                            padding: "2px",
+                            padding: "2px 4px",
                             display: "flex",
                             alignItems: "center",
                           }}
@@ -507,22 +529,22 @@ export function ActiveHoldsDrawer({
                           {copiedId === hold.paymentRecordId ? (
                             <Check size={12} color="#059669" />
                           ) : (
-                            <Copy size={12} color="#64748b" />
+                            <Copy size={12} color="#334155" />
                           )}
                         </button>
                       </div>
                     </div>
 
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "11px" }}>
-                      <span style={{ color: "#64748b", fontWeight: 700 }}>PayPal Order ID:</span>
-                      <code style={{ fontWeight: 700, color: "#475569", fontFamily: "var(--font-mono)" }}>
+                      <span style={{ color: "#475569", fontWeight: 700 }}>PayPal Order ID:</span>
+                      <code style={{ fontWeight: 700, color: "#0f172a", fontFamily: "var(--font-mono)" }}>
                         {hold.paypalOrderId}
                       </code>
                     </div>
 
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "11px" }}>
-                      <span style={{ color: "#64748b", fontWeight: 700 }}>Authorized At:</span>
-                      <span style={{ color: "#475569", fontWeight: 600 }}>
+                      <span style={{ color: "#475569", fontWeight: 700 }}>Authorized At:</span>
+                      <span style={{ color: "#0f172a", fontWeight: 700 }}>
                         {hold.authorizedAt ? new Date(hold.authorizedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Just now"}
                       </span>
                     </div>
@@ -532,7 +554,7 @@ export function ActiveHoldsDrawer({
                   <div
                     style={{
                       background: "#f0fdf4",
-                      border: "1px solid #bbf7d0",
+                      border: "1.5px solid #86efac",
                       borderRadius: "6px",
                       padding: "8px 12px",
                       display: "flex",
@@ -544,16 +566,16 @@ export function ActiveHoldsDrawer({
                     <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                       <span
                         style={{
-                          background: "var(--neo-blue)",
+                          background: "#0284c7",
                           color: "#ffffff",
                           padding: "2px 6px",
                           borderRadius: "4px",
                           fontWeight: 800,
                         }}
                       >
-                        Reserved ($${hold.amountDollars})
+                        Reserved (${hold.amountDollars})
                       </span>
-                      <ArrowRight size={13} color="#059669" />
+                      <ArrowRight size={13} color="#059669" strokeWidth={2.5} />
                       <span
                         style={{
                           background: "var(--neo-green)",
@@ -563,7 +585,7 @@ export function ActiveHoldsDrawer({
                           fontWeight: 800,
                         }}
                       >
-                        Captured Spend ($${hold.amountDollars})
+                        Captured Spend (${hold.amountDollars})
                       </span>
                     </div>
                     <span style={{ color: "#166534", fontWeight: 800 }}>Shift on Capture</span>
