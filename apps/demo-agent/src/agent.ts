@@ -20,25 +20,25 @@ const openai = OPENAI_API_KEY ? new OpenAI({ apiKey: OPENAI_API_KEY }) : null;
 // Product catalog mock (Channel3 stand-in)
 const CATALOG = [
   {
-    id: "item_paper_01",
-    name: "Multipurpose Recycled Laser Paper (Case of 2)",
-    category: "office_supplies",
+    id: "item_gpu_01",
+    name: "Modal Labs Serverless GPU Inference (A100 Cluster)",
+    category: "5734",
     amountCents: 4500,
-    vendor: "Staples Supplies",
+    vendor: "Modal Labs",
   },
   {
-    id: "item_toner_02",
-    name: "High-Yield Black Toner Cartridge",
-    category: "office_supplies",
-    amountCents: 7500,
-    vendor: "Staples Supplies",
+    id: "item_embed_02",
+    name: "Pinecone Serverless Vector Index Compute Units",
+    category: "7372",
+    amountCents: 3200,
+    vendor: "Pinecone",
   },
   {
-    id: "item_monitor_03",
-    name: "27-inch 4K Lab Display Monitor",
-    category: "electronics",
-    amountCents: 24000,
-    vendor: "Dell Direct",
+    id: "item_cloud_03",
+    name: "RunPod Dedicated H100 Cloud Instance (10 hrs)",
+    category: "7372",
+    amountCents: 2800,
+    vendor: "RunPod",
   },
   {
     id: "item_rolex_04",
@@ -46,6 +46,13 @@ const CATALOG = [
     category: "luxury",
     amountCents: 150000,
     vendor: "Shady Merchant",
+  },
+  {
+    id: "item_unauthorized_05",
+    name: "Multipurpose Recycled Laser Paper (Case of 2)",
+    category: "office_supplies",
+    amountCents: 4500,
+    vendor: "Staples Supplies",
   },
 ];
 
@@ -73,8 +80,8 @@ export async function runShoppingAgent(goal: string, options: { mandateId?: stri
   }
 
   if (!mandateId) {
-    mandateId = "m-demo-default";
-    console.log(`ℹ️ No explicit mandate found. Using default demo mandate: ${mandateId}`);
+    mandateId = "146ca2d7-d84f-4153-a440-b359253f976e";
+    console.log(`ℹ️ No explicit mandate found. Using fallback demo mandate UUID: ${mandateId}`);
   } else {
     console.log(`📋 Connected to Mandate ID: ${mandateId}`);
   }
@@ -82,15 +89,26 @@ export async function runShoppingAgent(goal: string, options: { mandateId?: stri
   // 2. Autonomous Decision Loop
   console.log(`\n🔍 [Step 1] Querying catalog for items matching: "${goal}"...`);
   const matchedItem =
-    CATALOG.find((item) =>
-      goal.toLowerCase().includes("paper")
-        ? item.name.toLowerCase().includes("paper")
-        : goal.toLowerCase().includes("monitor") || goal.toLowerCase().includes("display")
-        ? item.name.toLowerCase().includes("monitor")
-        : goal.toLowerCase().includes("rolex") || goal.toLowerCase().includes("watch")
-        ? item.name.toLowerCase().includes("watch")
-        : true
-    ) || CATALOG[0]!;
+    CATALOG.find((item) => {
+      const lower = goal.toLowerCase();
+      if (lower.includes("pinecone") || lower.includes("vector") || lower.includes("embedding")) {
+        return item.id === "item_embed_02";
+      }
+      if (lower.includes("runpod") || lower.includes("cloud")) {
+        return item.id === "item_cloud_03";
+      }
+      if (lower.includes("gpu") || lower.includes("modal") || lower.includes("inference") || lower.includes("compute")) {
+        return item.id === "item_gpu_01";
+      }
+      if (lower.includes("rolex") || lower.includes("watch") || lower.includes("luxury")) {
+        return item.id === "item_rolex_04";
+      }
+      if (lower.includes("paper") || lower.includes("staples") || lower.includes("office")) {
+        return item.id === "item_unauthorized_05";
+      }
+      return false;
+    }) || CATALOG[0]!;
+
 
   console.log(`   Found: ${matchedItem.name} — $${(matchedItem.amountCents / 100).toFixed(2)} (${matchedItem.vendor})`);
 

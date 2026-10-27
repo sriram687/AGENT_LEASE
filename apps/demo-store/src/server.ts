@@ -103,7 +103,9 @@ async function postTrackingToPayPal(order: Order) {
 }
 
 async function notifyLeash(order: Order, eventType: string) {
-  const leashWebhookUrl = process.env["LEASH_GATEWAY_URL"] + "/webhooks/delivery";
+  const gatewayBase = process.env["LEASH_GATEWAY_URL"] || "http://localhost:3000";
+  const leashWebhookUrl = `${gatewayBase}/webhooks/delivery`;
+
   try {
     await fetch(leashWebhookUrl, {
       method: "POST",

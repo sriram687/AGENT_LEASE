@@ -54,7 +54,9 @@ export async function runDeterministicRules(
   // 6. Merchant allowlist (empty list = allow all)
   const merchantOk =
     (mandate.merchantAllowlist as string[]).length === 0 ||
-    (mandate.merchantAllowlist as string[]).includes(input.vendorName);
+    (mandate.merchantAllowlist as string[]).some(
+      (m) => m.toLowerCase().trim() === input.vendorName.toLowerCase().trim()
+    );
   if (!merchantOk) failedRules.push("merchant_not_allowed");
 
   // 7. Velocity check

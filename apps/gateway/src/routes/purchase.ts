@@ -383,7 +383,19 @@ purchaseRouter.post("/", async (c) => {
           actorType: "system",
           actorId: "paypal_gateway",
         });
-      }
+      // Optionally forward to Demo Store for carrier tracking demo
+      const demoStoreUrl = process.env["DEMO_STORE_URL"] ?? "http://localhost:3002";
+      fetch(`${demoStoreUrl}/orders`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          paypalOrderId: authRes.orderId ?? `ord_${Date.now()}`,
+          purchaseRequestId: req.id,
+          itemName,
+          vendorName: input.vendorName,
+          amountCents: input.amountCents,
+        }),
+      }).catch(() => {});
     }
 
     return c.json({

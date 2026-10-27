@@ -281,6 +281,9 @@ importers:
 
   packages/ledger:
     dependencies:
+      '@leash/crypto':
+        specifier: workspace:*
+        version: link:../crypto
       '@leash/db':
         specifier: workspace:*
         version: link:../db
