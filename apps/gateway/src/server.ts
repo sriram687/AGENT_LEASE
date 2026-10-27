@@ -16,11 +16,32 @@
  */
 import { Hono } from "hono";
 import { serve } from "@hono/node-server";
+import { readFileSync, existsSync } from "node:fs";
+import { resolve } from "node:path";
 import { mcpRouter } from "./routes/mcp.js";
 import { webhookRouter } from "./routes/webhooks.js";
 import { escalationRouter } from "./routes/escalations.js";
 import { mandateRouter } from "./routes/mandates.js";
 import { purchaseRouter } from "./routes/purchase.js";
+
+function loadEnv() {
+  const envPaths = [resolve(process.cwd(), ".env"), resolve(process.cwd(), "../../.env")];
+  for (const envPath of envPaths) {
+    if (existsSync(envPath)) {
+      const content = readFileSync(envPath, "utf-8");
+      for (const line of content.split("\n")) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith("#")) continue;
+        const [k, ...v] = trimmed.split("=");
+        if (k && !process.env[k.trim()]) {
+          process.env[k.trim()] = v.join("=").trim().replace(/^["']|["']$/g, "");
+        }
+      }
+      break;
+    }
+  }
+}
+loadEnv();
 
 const app = new Hono();
 
