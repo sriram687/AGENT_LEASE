@@ -38,6 +38,8 @@ export async function runLLMJudge(
   mandate: Mandate
 ): Promise<LLMJudgeOutput> {
   const apiKey = process.env["OPENAI_API_KEY"];
+  const baseURL = process.env["LLM_BASE_URL"] || process.env["OPENAI_BASE_URL"];
+  const modelName = process.env["LLM_MODEL"] || process.env["OPENAI_MODEL"] || "gpt-4o";
 
   // Fast-path heuristic check for obvious injection before or without external API
   const combinedText = `${input.itemName} ${input.itemDescription ?? ""} ${input.justification}`.toLowerCase();
@@ -50,7 +52,10 @@ export async function runLLMJudge(
     combinedText.includes("disregard") ||
     combinedText.includes("instruction");
 
-  if (!apiKey || apiKey === "mock" || apiKey.startsWith("sk-placeholder")) {
+  const hasApiKey = Boolean(apiKey && apiKey !== "mock" && !apiKey.startsWith("sk-placeholder"));
+  const hasCustomEndpoint = Boolean(baseURL);
+
+  if (!hasApiKey && !hasCustomEndpoint) {
     if (hasInjectionPattern) {
       return {
         verdict: "DENIED",
@@ -81,7 +86,10 @@ export async function runLLMJudge(
   }
 
   try {
-    const openai = new OpenAI({ apiKey });
+    const openai = new OpenAI({
+      apiKey: apiKey || "ollama",
+      baseURL: baseURL || undefined,
+    });
     const userMessage = `
 MANDATE PURPOSE: ${mandate.purpose}
 
@@ -97,7 +105,7 @@ Does this request genuinely match the mandate purpose? Evaluate carefully.
 `;
 
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: modelName,
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
         { role: "user", content: userMessage },

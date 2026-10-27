@@ -48,6 +48,69 @@ export interface AssignedTaskItem {
   requestedAt: string;
 }
 
+interface LLMDecomposedTask {
+  itemName?: string;
+  vendorName?: string;
+  category?: string;
+  amountDollars?: number;
+  justification?: string;
+}
+
+/**
+ * Attempts to decompose freeform mission instructions using a connected LLM
+ * (e.g. Lab PC running Ollama 14B or OpenAI), falling back smoothly if unavailable.
+ */
+async function tryLLMDecomposition(taskText: string): Promise<LLMDecomposedTask | null> {
+  const baseURL = process.env["LLM_BASE_URL"] || process.env["OPENAI_BASE_URL"];
+  const apiKey = process.env["OPENAI_API_KEY"] || "ollama";
+  const model = process.env["LLM_MODEL"] || process.env["OPENAI_MODEL"] || "qwen2.5:14b";
+
+  if (!baseURL && (!process.env["OPENAI_API_KEY"] || process.env["OPENAI_API_KEY"] === "mock")) {
+    return null;
+  }
+
+  const endpoint = baseURL
+    ? `${baseURL.replace(/\/+$/, "")}/chat/completions`
+    : "https://api.openai.com/v1/chat/completions";
+
+  try {
+    const res = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          {
+            role: "system",
+            content:
+              'You are an autonomous procurement AI. Extract the target item, vendor, category (MCC code or short slug like 5734, 7372, cloud_services, office_supplies, luxury), estimated amount in USD, and justification from the user mission. Return ONLY a valid JSON object matching: {"itemName": string, "vendorName": string, "category": string, "amountDollars": number, "justification": string}.',
+          },
+          {
+            role: "user",
+            content: taskText,
+          },
+        ],
+        temperature: 0.1,
+        response_format: { type: "json_object" },
+      }),
+      signal: AbortSignal.timeout(4000),
+      cache: "no-store",
+    });
+
+    if (!res.ok) return null;
+    const data = (await res.json()) as any;
+    const content = data.choices?.[0]?.message?.content;
+    if (!content) return null;
+    return JSON.parse(content) as LLMDecomposedTask;
+  } catch (err: any) {
+    console.warn("[tryLLMDecomposition] LLM query timed out or unavailable, using heuristics:", err?.message);
+    return null;
+  }
+}
+
 /**
  * Dispatch an autonomous agent task to Leash Gateway.
  * Dynamically resolves or extracts parameters from natural language.
@@ -85,11 +148,17 @@ export async function dispatchAgentTask(input: DispatchTaskInput): Promise<Agent
     mandateId = "146ca2d7-d84f-4153-a440-b359253f976e";
   }
 
-  // 2. Parse Natural Language Task & Extract Parameters
+  // 2. Parse Natural Language Task (via Local LLM / Ollama if available, else Heuristics)
   const lower = taskText.toLowerCase();
 
-  // Extract dollar amount if explicitly given in task string (e.g. "$1,500" or "$45" or "45.00 dollars")
+  // Try calling Local LLM (e.g. Lab PC Ollama 14B or OpenAI) if configured
+  const llmParsed = await tryLLMDecomposition(taskText);
+
+  // Extract dollar amount if explicitly given or extracted by LLM
   let amountCents = input.amountDollars ? Math.round(parseFloat(input.amountDollars) * 100) : 0;
+  if ((isNaN(amountCents) || amountCents <= 0) && llmParsed?.amountDollars) {
+    amountCents = Math.round(llmParsed.amountDollars * 100);
+  }
   if (isNaN(amountCents) || amountCents <= 0) {
     const dollarMatch = taskText.match(/\$([0-9,]+(?:\.[0-9]{2})?)/);
     if (dollarMatch && dollarMatch[1]) {
@@ -98,7 +167,7 @@ export async function dispatchAgentTask(input: DispatchTaskInput): Promise<Agent
   }
 
   // Determine Vendor
-  let vendorName = input.vendorName?.trim();
+  let vendorName = input.vendorName?.trim() || llmParsed?.vendorName;
   if (!vendorName) {
     if (lower.includes("modal")) vendorName = "Modal Labs";
     else if (lower.includes("pinecone")) vendorName = "Pinecone";
@@ -112,7 +181,7 @@ export async function dispatchAgentTask(input: DispatchTaskInput): Promise<Agent
   }
 
   // Determine Item Name
-  let itemName = input.itemName?.trim();
+  let itemName = input.itemName?.trim() || llmParsed?.itemName;
   if (!itemName) {
     if (lower.includes("gpu") || lower.includes("modal")) {
       itemName = "Modal Labs Serverless GPU Inference (A100 Cluster)";
@@ -136,7 +205,7 @@ export async function dispatchAgentTask(input: DispatchTaskInput): Promise<Agent
   }
 
   // Determine MCC Category
-  let category = input.category?.trim();
+  let category = input.category?.trim() || llmParsed?.category;
   if (!category) {
     if (vendorName === "Pinecone" || lower.includes("vector")) category = "7372";
     else if (vendorName === "Modal Labs" || vendorName === "RunPod" || lower.includes("gpu")) category = "5734";

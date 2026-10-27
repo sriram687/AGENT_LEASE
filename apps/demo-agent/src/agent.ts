@@ -15,7 +15,12 @@ import OpenAI from "openai";
 
 const GATEWAY_URL = process.env["LEASH_GATEWAY_URL"] ?? "http://localhost:3000";
 const OPENAI_API_KEY = process.env["OPENAI_API_KEY"];
-const openai = OPENAI_API_KEY ? new OpenAI({ apiKey: OPENAI_API_KEY }) : null;
+const LLM_BASE_URL = process.env["LLM_BASE_URL"] || process.env["OPENAI_BASE_URL"];
+const LLM_MODEL = process.env["LLM_MODEL"] || process.env["OPENAI_MODEL"] || "qwen2.5:14b";
+const openai =
+  LLM_BASE_URL || (OPENAI_API_KEY && OPENAI_API_KEY !== "mock")
+    ? new OpenAI({ apiKey: OPENAI_API_KEY || "ollama", baseURL: LLM_BASE_URL || undefined })
+    : null;
 
 // Product catalog mock (Channel3 stand-in)
 const CATALOG = [
