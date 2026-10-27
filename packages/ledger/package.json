@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@leash/crypto": "workspace:*",
     "@leash/db": "workspace:*",
     "@leash/types": "workspace:*",
     "zod": "^3.23.0"
