@@ -4,6 +4,7 @@ import { SpendChart } from "@/components/dashboard/SpendChart";
 import { RecentActivity } from "@/components/dashboard/RecentActivity";
 import { EscalationAlert } from "@/components/dashboard/EscalationAlert";
 import { ChainStatus } from "@/components/dashboard/ChainStatus";
+import { AgentDispatchBar } from "@/components/dashboard/AgentDispatchBar";
 import { getMandateSummary } from "@/lib/api/mandates";
 import { getPendingEscalations } from "@/lib/api/escalations";
 import { getSpendTimeline } from "@/lib/api/ledger";
@@ -103,10 +104,14 @@ export default async function DashboardPage() {
         </div>
       </div>
 
+      {/* Autonomous Agent Dispatch Studio */}
+      <AgentDispatchBar />
+
       {/* Pending escalations alert */}
       {pendingEscalations.length > 0 && (
         <EscalationAlert count={pendingEscalations.length} />
       )}
+
 
       {/* KPI Stat Cards Grid */}
       <div
