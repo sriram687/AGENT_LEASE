@@ -92,14 +92,13 @@ export function SpendChart({ data }: SpendChartProps) {
           },
           tooltip: {
             renderer: (params: any) => {
-              const dateStr =
-                params.xValue instanceof Date
-                  ? params.xValue.toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                    })
-                  : String(params.xValue);
-              const val = Number(params.yValue ?? 0).toFixed(2);
+              const rawDate = params.datum?.[params.xKey] ?? params.datum?.date ?? params.xValue;
+              const dateObj = rawDate instanceof Date ? rawDate : new Date(rawDate);
+              const dateStr = !isNaN(dateObj.getTime())
+                ? dateObj.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+                : String(rawDate ?? "");
+              const rawVal = params.datum?.[params.yKey] ?? params.yValue ?? 0;
+              const val = Number(rawVal).toFixed(2);
               return {
                 title: "Captured Spend ($)",
                 content: `${dateStr}: $${val}`,
@@ -127,14 +126,13 @@ export function SpendChart({ data }: SpendChartProps) {
           },
           tooltip: {
             renderer: (params: any) => {
-              const dateStr =
-                params.xValue instanceof Date
-                  ? params.xValue.toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                    })
-                  : String(params.xValue);
-              const val = Number(params.yValue ?? 0).toFixed(2);
+              const rawDate = params.datum?.[params.xKey] ?? params.datum?.date ?? params.xValue;
+              const dateObj = rawDate instanceof Date ? rawDate : new Date(rawDate);
+              const dateStr = !isNaN(dateObj.getTime())
+                ? dateObj.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+                : String(rawDate ?? "");
+              const rawVal = params.datum?.[params.yKey] ?? params.yValue ?? 0;
+              const val = Number(rawVal).toFixed(2);
               return {
                 title: "Reserved in Escrow ($)",
                 content: `${dateStr}: $${val}`,
