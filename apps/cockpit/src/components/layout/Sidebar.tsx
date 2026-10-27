@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
+  Bot,
   FileText,
   AlertTriangle,
   BookOpen,
@@ -15,6 +16,7 @@ import {
 
 const NAV = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/tasks", label: "Agent Tasks", icon: Bot },
   { href: "/mandates", label: "Mandates", icon: FileText },
   { href: "/escalations", label: "Escalations", icon: AlertTriangle, badge: true },
   { href: "/ledger", label: "Ledger", icon: BookOpen },
@@ -22,6 +24,7 @@ const NAV = [
   { href: "/security", label: "Security", icon: Shield },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
+
 
 export function Sidebar() {
   const pathname = usePathname();
