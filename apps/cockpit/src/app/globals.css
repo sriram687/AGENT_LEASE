@@ -410,3 +410,37 @@ body {
   }
 }
 
+/* ─── AG-Charts Dark Tooltips ────────────────────────────────────────────── */
+.ag-chart-tooltip,
+.ag-chart-dark-tooltip {
+  background-color: #18181b !important;
+  color: #ffffff !important;
+  border: 2px solid #121212 !important;
+  border-radius: 8px !important;
+  box-shadow: 3px 3px 0px #121212 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
+.ag-chart-tooltip-title,
+.ag-chart-dark-tooltip-title {
+  background-color: #27272a !important;
+  color: #f4f4f5 !important;
+  font-weight: 800 !important;
+  font-size: 11px !important;
+  padding: 6px 12px !important;
+  border-bottom: 1.5px solid #121212 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+}
+
+.ag-chart-tooltip-content,
+.ag-chart-dark-tooltip-content {
+  background-color: #18181b !important;
+  color: #ffffff !important;
+  padding: 8px 12px !important;
+  font-weight: 700 !important;
+  font-size: 13px !important;
+}
+
+

@@ -90,6 +90,32 @@ export function SpendChart({ data }: SpendChartProps) {
             strokeWidth: 2,
             size: 7,
           },
+          tooltip: {
+            renderer: (params: any) => {
+              const dateStr =
+                params.xValue instanceof Date
+                  ? params.xValue.toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })
+                  : String(params.xValue);
+              return `
+                <div style="background: #18181b; color: #ffffff; padding: 10px 14px; border: 2px solid #121212; border-radius: 8px; box-shadow: 3px 3px 0px #121212; min-width: 175px; font-family: sans-serif;">
+                  <div style="font-size: 10.5px; font-weight: 800; color: #a1a1aa; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 5px;">
+                    ${dateStr}
+                  </div>
+                  <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                      <span style="width: 8px; height: 8px; border-radius: 50%; background: #818cf8; display: inline-block;"></span>
+                      <span style="font-size: 12px; font-weight: 700; color: #f4f4f5;">Captured Spend:</span>
+                    </div>
+                    <span style="font-size: 13.5px; font-weight: 900; color: #a5b4fc;">$${Number(params.yValue).toFixed(2)}</span>
+                  </div>
+                </div>
+              `;
+            },
+          },
         },
         {
           type: "area" as const,
@@ -106,6 +132,32 @@ export function SpendChart({ data }: SpendChartProps) {
             stroke: "#ffffff",
             strokeWidth: 2,
             size: 7,
+          },
+          tooltip: {
+            renderer: (params: any) => {
+              const dateStr =
+                params.xValue instanceof Date
+                  ? params.xValue.toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })
+                  : String(params.xValue);
+              return `
+                <div style="background: #18181b; color: #ffffff; padding: 10px 14px; border: 2px solid #121212; border-radius: 8px; box-shadow: 3px 3px 0px #121212; min-width: 175px; font-family: sans-serif;">
+                  <div style="font-size: 10.5px; font-weight: 800; color: #a1a1aa; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 5px;">
+                    ${dateStr}
+                  </div>
+                  <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                      <span style="width: 8px; height: 8px; border-radius: 50%; background: #fbbf24; display: inline-block;"></span>
+                      <span style="font-size: 12px; font-weight: 700; color: #f4f4f5;">Reserved (Holds):</span>
+                    </div>
+                    <span style="font-size: 13.5px; font-weight: 900; color: #fde047;">$${Number(params.yValue).toFixed(2)}</span>
+                  </div>
+                </div>
+              `;
+            },
           },
         },
       ],
@@ -144,7 +196,10 @@ export function SpendChart({ data }: SpendChartProps) {
           label: { color: "#121212", fontSize: 12, fontWeight: "bold" },
         },
       },
-      tooltip: { enabled: true },
+      tooltip: {
+        enabled: true,
+        darkTheme: true,
+      },
     }),
     [chartData, yAxisMax]
   );
