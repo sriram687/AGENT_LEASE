@@ -15,10 +15,9 @@
  *  - Structuring detection (many small buys avoiding the escalate threshold)
  */
 import type { DB } from "@leash/db";
-import { purchaseRequests } from "@leash/db";
+import { purchaseRequests, and, eq, gt, gte, lt, sql, count } from "@leash/db";
 import type { Mandate } from "@leash/db";
 import type { RequestPurchaseInput, RuleResults } from "@leash/types";
-import { and, eq, gt, gte, lt, sql, count } from "drizzle-orm";
 
 export async function runDeterministicRules(
   input: RequestPurchaseInput,

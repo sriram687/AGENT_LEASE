@@ -8,7 +8,7 @@ const nextConfig = {
   reactStrictMode: true,
 
   // Transpile workspace packages
-  transpilePackages: ["@leash/types", "@leash/crypto"],
+  transpilePackages: ["@leash/types", "@leash/crypto", "@leash/policy-engine"],
 
   // Environment variables exposed to the browser
   env: {

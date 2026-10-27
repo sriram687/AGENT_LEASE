@@ -16,20 +16,27 @@
  */
 import OpenAI from "openai";
 import type { DB } from "@leash/db";
-import { purchaseRequests } from "@leash/db";
+import { purchaseRequests, eq, sql, and } from "@leash/db";
 import type { Mandate } from "@leash/db";
 import type { RequestPurchaseInput } from "@leash/types";
-import { eq, sql, and } from "drizzle-orm";
 
-const openai = new OpenAI({ apiKey: process.env["OPENAI_API_KEY"] });
-
-export async function generateEmbedding(text: string): Promise<number[]> {
-  const response = await openai.embeddings.create({
-    model: "text-embedding-3-small",
-    input: text,
-    dimensions: 512, // Reduced for pgvector performance
-  });
-  return response.data[0]!.embedding;
+export async function generateEmbedding(text: string): Promise<number[] | null> {
+  const apiKey = process.env["OPENAI_API_KEY"];
+  if (!apiKey || apiKey === "mock" || apiKey.startsWith("sk-placeholder")) {
+    return null;
+  }
+  try {
+    const openai = new OpenAI({ apiKey });
+    const response = await openai.embeddings.create({
+      model: "text-embedding-3-small",
+      input: text,
+      dimensions: 512,
+    });
+    return response.data[0]?.embedding ?? null;
+  } catch (err) {
+    console.warn("[generateEmbedding] OpenAI embedding failed, continuing:", err);
+    return null;
+  }
 }
 
 export async function runSemanticDedup(
@@ -37,9 +44,9 @@ export async function runSemanticDedup(
   mandate: Mandate,
   db: DB
 ): Promise<{ requestId: string; similarity: number } | null> {
-  // Generate embedding for the candidate item
   const candidateText = `${input.itemName} ${input.itemDescription ?? ""}`.trim();
   const embedding = await generateEmbedding(candidateText);
+  if (!embedding) return null;
 
   // NOTE: The actual pgvector query uses <=> (cosine distance) operator.
   // Migration must CREATE EXTENSION vector; and add a vector column to purchase_requests.
