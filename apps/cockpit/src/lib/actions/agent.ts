@@ -176,8 +176,8 @@ export async function dispatchAgentTask(input: DispatchTaskInput): Promise<Agent
     else if (lower.includes("github")) vendorName = "GitHub";
     else if (lower.includes("digitalocean")) vendorName = "DigitalOcean";
     else if (lower.includes("staples") || lower.includes("paper") || lower.includes("office")) vendorName = "Staples Supplies";
-    else if (lower.includes("rolex") || lower.includes("watch") || lower.includes("gold") || lower.includes("luxury")) vendorName = "Shady Merchant";
-    else vendorName = "Cloud Provider";
+    else if (lower.includes("rolex") || lower.includes("watch") || lower.includes("gold") || lower.includes("luxury")) vendorName = "Luxury Boutique";
+    else vendorName = "Direct Merchant";
   }
 
   // Determine Item Name
@@ -199,8 +199,8 @@ export async function dispatchAgentTask(input: DispatchTaskInput): Promise<Agent
       itemName = "Multipurpose Recycled Laser Paper (Case of 2)";
       if (amountCents <= 0) amountCents = 4500;
     } else {
-      itemName = taskText.slice(0, 60);
-      if (amountCents <= 0) amountCents = 3500;
+      itemName = taskText.slice(0, 80);
+      if (amountCents <= 0) amountCents = 2500;
     }
   }
 

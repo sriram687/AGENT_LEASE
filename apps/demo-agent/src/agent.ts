@@ -146,7 +146,7 @@ export async function runShoppingAgent(goal: string, options: { mandateId?: stri
 
     if (result.verdict === "APPROVED") {
       console.log(`✅ VERDICT: APPROVED (2PC PayPal Hold Active)`);
-      console.log(`   Hold ID: ${result.authorizationId || result.orderId || "auth_simulated"}`);
+      console.log(`   Hold ID: ${result.authorizationId || result.orderId}`);
       console.log(`   Amount:  $${(matchedItem.amountCents / 100).toFixed(2)} USD`);
       console.log(`   Status:  Funds held in escrow. Delivery awaiting confirmation.`);
       console.log(`   Receipt: Cryptographically signed by Gateway`);

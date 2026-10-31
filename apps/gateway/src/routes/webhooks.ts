@@ -188,14 +188,72 @@ webhookRouter.post("/delivery", async (c) => {
 
 // ─── 2. Inbound PayPal Webhook ───────────────────────────────────────────
 webhookRouter.post("/paypal", async (c) => {
-  const body = await c.req.json();
-  const eventType = body.event_type as string;
+  try {
+    const body = await c.req.json();
+    const eventType = body.event_type as string;
+    const resource = body.resource;
 
-  if (!PAYPAL_WEBHOOK_EVENTS.includes(eventType as any)) {
-    return c.json({ error: "Unknown event type" }, 400);
+    if (!PAYPAL_WEBHOOK_EVENTS.includes(eventType as any)) {
+      console.log(`📩 Received unmonitored PayPal webhook event: ${eventType}`);
+      return c.json({ received: true, ignored: true, eventType }, 200);
+    }
+
+    console.log(`📩 Processing PayPal webhook: ${eventType} (Resource ID: ${resource?.id})`);
+
+    // Handle PAYMENT.AUTHORIZATION.VOIDED
+    if (eventType === "PAYMENT.AUTHORIZATION.VOIDED") {
+      const authId = resource?.id;
+      if (authId) {
+        const [payment] = await db
+          .select()
+          .from(paymentRecords)
+          .where(eq(paymentRecords.paypalAuthorizationId, authId))
+          .limit(1);
+
+        if (payment && payment.status !== "VOIDED") {
+          await db
+            .update(paymentRecords)
+            .set({ status: "VOIDED", updatedAt: new Date() })
+            .where(eq(paymentRecords.id, payment.id));
+
+          const [pReq] = await db
+            .update(purchaseRequests)
+            .set({ status: "VOIDED" })
+            .where(eq(purchaseRequests.id, payment.purchaseRequestId))
+            .returning({ mandateId: purchaseRequests.mandateId });
+
+          if (pReq?.mandateId) {
+            const [mandate] = await db
+              .select()
+              .from(mandates)
+              .where(eq(mandates.id, pReq.mandateId))
+              .limit(1);
+
+            if (mandate) {
+              await db
+                .update(mandates)
+                .set({
+                  reservedCents: Math.max(0, mandate.reservedCents - payment.amountCents),
+                  updatedAt: new Date(),
+                })
+                .where(eq(mandates.id, mandate.id));
+            }
+          }
+          console.log(`🛑 Processed VOIDED authorization for payment ${payment.id}`);
+        }
+      }
+    }
+
+    // Handle PAYMENT.CAPTURE.COMPLETED
+    if (eventType === "PAYMENT.CAPTURE.COMPLETED") {
+      const captureId = resource?.id;
+      const authId = resource?.custom_id || resource?.supplementary_data?.related_ids?.authorization_id;
+      console.log(`✅ PayPal confirmed capture ${captureId} for auth ${authId || "direct"}`);
+    }
+
+    return c.json({ received: true, eventType, resourceId: resource?.id });
+  } catch (err: any) {
+    console.error("Error processing PayPal webhook:", err);
+    return c.json({ error: err.message }, 500);
   }
-
-  console.log(`📩 Received PayPal webhook: ${eventType}`);
-  // In sandbox, transmission ID log is recorded
-  return c.json({ received: true, eventType });
 });

@@ -101,16 +101,6 @@ export async function authorizePayPalVaultHold(
     if (!res.ok) {
       const errText = await res.text();
       console.error("[authorizePayPalVaultHold] Order creation failed:", errText);
-      // Graceful sandbox fallback for demo continuity if token requires re-vaulting
-      if (errText.includes("ORDER_NOT_APPROVED") || errText.includes("RESOURCE_NOT_FOUND")) {
-        console.warn("[authorizePayPalVaultHold] Using verified Sandbox hold fallback for demo continuity.");
-        return {
-          success: true,
-          orderId: `ord_sb_${Date.now().toString(36)}`,
-          authorizationId: `auth_sb_${Date.now().toString(36)}`,
-          status: "CREATED",
-        };
-      }
       return { success: false, error: errText };
     }
 
@@ -164,15 +154,6 @@ export async function capturePayPalHold(
   currency: string = "USD"
 ): Promise<{ success: boolean; captureId?: string; status?: string; error?: string }> {
   try {
-    if (authorizationId.startsWith("auth_sb_") || authorizationId.startsWith("auth_simulated")) {
-      console.log(`[capturePayPalHold] Captured verified sandbox hold: ${authorizationId}`);
-      return {
-        success: true,
-        captureId: `cap_sb_${Date.now().toString(36)}`,
-        status: "COMPLETED",
-      };
-    }
-
     const accessToken = await getPayPalAccessToken();
 
     const body: Record<string, any> = { final_capture: true };
