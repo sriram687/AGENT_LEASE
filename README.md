@@ -94,6 +94,12 @@ Every purchase intent passes through three sequential gates:
 * **Signed Decision Receipts:** The gateway cryptographically signs every approval, denial, and escalation receipt.
 * **SHA-256 Hash-Chained Ledger:** Every ledger event stores `SHA-256(previousHash || canonicalJson(payload))`. Any database manipulation breaks the chain and is immediately flagged by the Cockpit.
 
+### 5. Inbound PayPal Webhooks Integration
+Real-time, two-way state synchronization between PayPal Sandbox and the Leash Gateway:
+* **Endpoint:** `POST /api/webhooks/paypal` (on Gateway port 3000).
+* **Asynchronous Settlement:** Handles `PAYMENT.AUTHORIZATION.VOIDED` to immediately unlock user budget (`reservedCents`) when a hold expires or is cancelled on PayPal, `PAYMENT.CAPTURE.COMPLETED` for immutable ledger commitment, and `PAYMENT.AUTHORIZATION.CREATED` for escrow verification.
+* **Local Webhook Tunneling:** Expose port 3000 via `ngrok http 3000` and register `https://<tunnel-domain>/api/webhooks/paypal` in PayPal Developer Dashboard → Sandbox Webhooks.
+
 ---
 
 ## The Cockpit & Interfaces
