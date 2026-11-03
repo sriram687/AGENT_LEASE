@@ -5,9 +5,9 @@
   "type": "module",
   "main": "./dist/server.js",
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "dev": "tsx watch src/server.ts",
-    "start": "node dist/server.js",
+    "build": "node init && tsc -p tsconfig.json",
+    "dev": "node init && tsx watch src/server.ts",
+    "start": "node init && node dist/server.js",
     "test": "vitest run",
     "test:adversarial": "vitest run --reporter=verbose src/tests/adversarial",
     "typecheck": "tsc --noEmit",
