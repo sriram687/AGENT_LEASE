@@ -23,6 +23,8 @@ import { webhookRouter } from "./routes/webhooks.js";
 import { escalationRouter } from "./routes/escalations.js";
 import { mandateRouter } from "./routes/mandates.js";
 import { purchaseRouter } from "./routes/purchase.js";
+import { workflowRouter } from "./routes/workflows.js";
+import { channel3Router } from "./routes/channel3.js";
 
 function loadEnv() {
   const envPaths = [resolve(process.cwd(), ".env"), resolve(process.cwd(), "../../.env")];
@@ -52,6 +54,8 @@ app.route("/webhooks", webhookRouter);
 app.route("/api/escalations", escalationRouter);
 app.route("/api/mandates", mandateRouter);
 app.route("/api/purchase", purchaseRouter);
+app.route("/api/workflows", workflowRouter);
+app.route("/api/channel3", channel3Router);
 
 const port = Number(process.env["PORT"] ?? 3000);
 

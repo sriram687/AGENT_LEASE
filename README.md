@@ -9,6 +9,11 @@
 [![PayPal Vault](https://img.shields.io/badge/PayPal_Vault-Setup_%26_Payment_Tokens_v3-0070ba)](https://developer.paypal.com/docs/api/payment-tokens/v3/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.4-3178c6)](https://www.typescriptlang.org/)
 [![MCP Protocol](https://img.shields.io/badge/MCP-Model_Context_Protocol-purple)](https://modelcontextprotocol.io/)
+[![Elastic](https://img.shields.io/badge/Elastic-Semantic_Dedup-005571)](https://www.elastic.co/)
+[![Render](https://img.shields.io/badge/Render-Workflow_Cron_Jobs-46E3B7)](https://render.com)
+[![Channel3](https://img.shields.io/badge/Channel3-Product_Catalog_API-orange)](https://channel3.ai)
+[![AG Grid](https://img.shields.io/badge/AG_Grid-Enterprise_Ledger_Table-212121)](https://www.ag-grid.com/)
+[![Bryntum](https://img.shields.io/badge/Bryntum-Mandate_Timeline-e34c26)](https://bryntum.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue)](LICENSE)
 
 ---
@@ -20,17 +25,18 @@
 3. [System Architecture](#system-architecture)
 4. [Core Technical Pillars](#core-technical-pillars)
 5. [PayPal Integration Map](#paypal-integration-map)
-6. [Codebase Map](#codebase-map)
-7. [Data Flow: End-to-End Request Lifecycle](#data-flow-end-to-end-request-lifecycle)
-8. [API Reference](#api-reference)
-9. [Key Source Files](#key-source-files)
-10. [Adversarial Benchmark Suite](#adversarial-benchmark-suite)
-11. [Security & Threat Model](#security--threat-model)
-12. [Getting Started](#getting-started)
-13. [Environment Variables](#environment-variables)
-14. [Running Demos & Tests](#running-demos--tests)
-15. [LLM Configuration](#llm-configuration)
-16. [Honest Limitations](#honest-limitations)
+6. [Hackathon Sponsor Integration Map](#hackathon-sponsor-integration-map)
+7. [Codebase Map](#codebase-map)
+8. [Data Flow: End-to-End Request Lifecycle](#data-flow-end-to-end-request-lifecycle)
+9. [API Reference](#api-reference)
+10. [Key Source Files](#key-source-files)
+11. [Adversarial Benchmark Suite](#adversarial-benchmark-suite)
+12. [Security & Threat Model](#security--threat-model)
+13. [Getting Started](#getting-started)
+14. [Environment Variables](#environment-variables)
+15. [Running Demos & Tests](#running-demos--tests)
+16. [LLM Configuration](#llm-configuration)
+17. [Honest Limitations](#honest-limitations)
 
 ---
 
@@ -333,6 +339,61 @@ ngrok http 3000
 
 ---
 
+## Hackathon Sponsor Integration Map
+
+Agent Leash integrates every major hackathon sponsor as a **load-bearing component** — not a wrapper.
+
+| Sponsor | Integration Depth | What It Does In Agent Leash | Source |
+|---------|------------------|---------------------------|--------|
+| **PayPal** | ✅ Full | 2PC (Authorize/Capture/Void), Vault v3 (Setup+Payment Tokens), Webhooks, Orders v2 | `packages/payment-orchestrator/` |
+| **AG Grid** | ✅ Full | Enterprise immutable ledger table (hash-chain viewer) with pivot, sorting, cell renderers | `apps/cockpit/src/components/ledger/LedgerGrid.tsx` |
+| **AG Charts** | ✅ Full | 30-day spend timeline area chart on analytics dashboard | `apps/cockpit/src/components/analytics/AnalyticsCharts.tsx` |
+| **Channel3** | ✅ Full | 100M+ product search API — agents call `search_products` via MCP, Gateway proxies at `GET /api/channel3/search` | `apps/gateway/src/integrations/channel3.ts` |
+| **Render** | ✅ Full | Hosting (`render.yaml` web services) + **Cron Workflows** for Day-2 SLA alerts and Day-29 authorization expiry auto-void via PayPal API | `infra/render.yaml`, `apps/gateway/src/workflows/delivery-sla-monitor.ts` |
+| **Elastic** | ✅ Full | ELSER hybrid semantic dedup (BM25 + dense vector) — replaces pgvector for purchase deduplication when `ELASTIC_URL` is set; falls back gracefully | `packages/policy-engine/src/layers/elastic-dedup.ts` |
+| **Bryntum** | ✅ Full | Mandate Authorization Hold Timeline — Gantt-style 30-day rolling view of hold lifecycle with SLA zones | `apps/cockpit/src/components/mandates/MandateTimeline.tsx` |
+| **Postman** | ✅ Full | Complete Postman collection: 7 endpoint groups, pre-request scripts, test assertions, env variables | `postman/agent-leash-api.json` |
+| **APIMatic** | ✅ Used | APIMatic context plugins for PayPal SDK used during development to accelerate correct Vault v3 and Orders v2 integration | Dev tooling |
+
+### Elastic: Hybrid Semantic Deduplication
+
+```
+Policy Engine Layer 2b (with Elastic):
+  ELSER inference → semantic_text field → hybrid BM25 + dense vector search
+  "standing desk" ≈ "StandDesk Pro" ≈ "height-adjustable workstation" → DEDUP HIT
+  → stops agent loop attacks that rephrase requests to bypass duplicate filters
+
+Fallback: pgvector (when ELASTIC_URL is not set)
+Env vars: ELASTIC_URL, ELASTIC_API_KEY
+```
+
+### Render: Durable Payment Lifecycle Workflows
+
+```
+Two Render Cron Jobs in render.yaml:
+
+leash-delivery-sla-monitor   │ Every 6h  │ Scans AUTHORIZED pays >2 days old
+                             │            │ → creates DELIVERY_SLA_ALERT in ledger
+
+leash-authorization-expiry-void │ Daily 2AM │ Finds AUTHORIZED pays >29 days
+                                │           │ → voids via PayPal /authorizations/{id}/void
+                                │           │ → releases mandate reserved balance
+                                │           │ → records PAYMENT_VOIDED in ledger
+```
+
+### Bryntum: Authorization Hold Timeline (Cockpit)
+
+```
+Mandate page → Authorization Hold Timeline component:
+  Green  (Days 0–2)  : Hold active, delivery expected
+  Yellow (Days 2–25) : SLA alert zone (Render Workflow monitors)
+  Red    (Days 25–29): Void imminent — approaching PayPal auth expiry
+  Day 29 marker      : Render auto-void fires here
+  NOW line (purple)  : Current time indicator
+```
+
+---
+
 ## Codebase Map
 
 ### `apps/gateway/` — The Core Engine (port 3000)
@@ -345,6 +406,10 @@ ngrok http 3000
 | `src/routes/mandates.ts` | CRUD for mandates, kill-switch endpoint |
 | `src/routes/escalations.ts` | Human approve/reject API |
 | `src/routes/webhooks.ts` | PayPal inbound webhooks + delivery carrier events |
+| `src/routes/workflows.ts` | `POST /api/workflows/trigger` — manual Render Workflow trigger |
+| `src/routes/channel3.ts` | `GET /api/channel3/search` — Channel3 product search proxy |
+| `src/workflows/delivery-sla-monitor.ts` | **Render Cron Jobs** — delivery SLA check + authorization expiry void |
+| `src/integrations/channel3.ts` | Channel3 100M+ product catalog API client |
 | `src/tests/adversarial/policy.test.ts` | **23-scenario adversarial benchmark** |
 
 ### `apps/cockpit/` — The Human Dashboard (port 3001)
@@ -357,6 +422,7 @@ ngrok http 3000
 | `src/app/escalations/page.tsx` | Human-in-the-loop approval inbox |
 | `src/app/ledger/page.tsx` | Tamper-evident hash-chain audit ledger |
 | `src/components/holds/ActiveHoldsDrawer.tsx` | Live 2PC escrow holds + capture/void controls |
+| `src/components/mandates/MandateTimeline.tsx` | **Bryntum-pattern Gantt timeline** — authorization hold lifecycle (SLA zones) |
 | `src/lib/actions/paypal.ts` | Vault setup, token exchange, PayPal API calls |
 | `src/lib/actions/agent.ts` | `dispatchAgentTask()` — NL task → purchase intent |
 | `src/lib/actions/mandates.ts` | Mandate server actions including policy simulation |
@@ -367,7 +433,8 @@ ngrok http 3000
 |------|---------------|
 | `src/index.ts` | `PolicyEngine` class — orchestrates all 3 layers |
 | `src/layers/deterministic.ts` | Budget, cap, category, velocity, structuring rules |
-| `src/layers/semantic-dedup.ts` | pgvector embedding similarity + cluster cap |
+| `src/layers/semantic-dedup.ts` | pgvector embedding similarity + cluster cap (fallback) |
+| `src/layers/elastic-dedup.ts` | **Elastic ELSER hybrid dedup** — BM25 + dense vector (primary when `ELASTIC_URL` set) |
 | `src/layers/llm-judge.ts` | OpenAI/Ollama structured output judge + injection screen |
 | `src/policy.test.ts` | Unit tests for policy layer |
 
@@ -652,6 +719,7 @@ pnpm dev
 | `PAYPAL_CLIENT_ID` | ✅ | PayPal Sandbox app Client ID |
 | `PAYPAL_CLIENT_SECRET` | ✅ | PayPal Sandbox app Client Secret |
 | `PAYPAL_BASE_URL` | ✅ | `https://api-m.sandbox.paypal.com` |
+| `PAYPAL_WEBHOOK_ID` | ✅ | PayPal Sandbox webhook ID (from Developer Dashboard) |
 | `DATABASE_URL` | ✅ | PostgreSQL connection string |
 | `REDIS_URL` | ✅ | Redis connection string |
 | `LEASH_GATEWAY_URL` | ✅ | Internal gateway URL |
@@ -659,8 +727,11 @@ pnpm dev
 | `OPENAI_API_KEY` | optional | For LLM judge (gpt-4o). Falls back to heuristics if absent. |
 | `LLM_BASE_URL` | optional | Local Ollama: `http://192.168.1.x:11434/v1` |
 | `LLM_MODEL` | optional | Model name: `qwen2.5:14b`, `llama3.1:14b`, `gpt-4o` |
-| `CHANNEL3_API_KEY` | optional | For real product search catalog |
+| `CHANNEL3_API_KEY` | optional | For real Channel3 product catalog search |
+| `ELASTIC_URL` | optional | **Sponsor: Elastic** — Elasticsearch endpoint. Enables ELSER hybrid semantic dedup. |
+| `ELASTIC_API_KEY` | optional | Elastic Cloud API key (Base64 encoded). Get from cloud.elastic.co |
 | `GATEWAY_PRIVATE_KEY_HEX` | optional | Ed25519 gateway signing key (hex) |
+| `LEASH_INTERNAL_SECRET` | optional | Shared secret for cockpit → gateway internal calls |
 
 ---
 
@@ -681,7 +752,36 @@ pnpm test
 ### TypeScript Type Checking
 ```bash
 pnpm --filter @leash/cockpit typecheck
-# Expected: exit code 0 ✅
+pnpm --filter @leash/gateway typecheck
+pnpm --filter @leash/policy-engine typecheck
+# All expected: exit code 0 ✅
+```
+
+### Postman API Collection (Sponsor: Postman)
+```bash
+# Import postman/agent-leash-api.json into Postman
+# Set environment variables: gateway_url = http://localhost:3000
+# Run collections in order: Mandates → Purchase → Webhooks → Render Workflows
+```
+Collection covers: mandate CRUD, purchase happy/denial/injection/escalation paths, delivery webhook, PayPal webhook simulation, Render workflow triggers, Channel3 search, MCP JSON-RPC tool calls.
+
+### Render Workflow Manual Trigger
+```bash
+# Manually trigger delivery SLA check (normally runs every 6h on Render Cron):
+curl -X POST http://localhost:3000/api/workflows/trigger \
+  -H "Content-Type: application/json" \
+  -d '{"workflow": "delivery-sla-check"}'
+
+# Trigger authorization expiry void (normally runs daily at 2AM UTC):
+curl -X POST http://localhost:3000/api/workflows/trigger \
+  -H "Content-Type: application/json" \
+  -d '{"workflow": "authorization-expiry-void"}'
+```
+
+### Channel3 Product Search
+```bash
+# Search products via Gateway (Channel3 API proxied):
+curl "http://localhost:3000/api/channel3/search?q=standing+desk&limit=5"
 ```
 
 ### Autonomous Shopping Agent (CLI)

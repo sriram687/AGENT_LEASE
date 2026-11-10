@@ -20,6 +20,7 @@ import { runDeterministicRules } from "./layers/deterministic.js";
 import { runLLMJudge } from "./layers/llm-judge.js";
 import { runInjectionScreen } from "./layers/injection-screen.js";
 import { runSemanticDedup } from "./layers/semantic-dedup.js";
+import { runElasticSemanticDedup } from "./layers/elastic-dedup.js";
 
 export class PolicyEngine {
   constructor(private readonly db: DB) {}
@@ -44,7 +45,11 @@ export class PolicyEngine {
     }
 
     // ─── Layer 2: Semantic deduplication ─────────────────────────────
-    const dedupResult = await runSemanticDedup(input, mandate, this.db);
+    // Try Elastic first (sponsor integration), fall back to pgvector
+    let dedupResult = await runElasticSemanticDedup(input, mandate);
+    if (!dedupResult) {
+      dedupResult = await runSemanticDedup(input, mandate, this.db);
+    }
     if (dedupResult) {
       ruleResults.semanticDedupMatch = dedupResult;
       // Dedup match → escalate (don't deny outright; human decides)

@@ -63,9 +63,42 @@ services:
           type: web
           property: host
 
-  # ─── Render Workflows (delivery SLA + reauth timers) ────────────────────
-  # Configured separately via Render dashboard or API
-  # Long-running workflows: delivery-watch, reauthorize, price-watch
+  # ─── Render Workflows: Delivery SLA + Authorization Expiry (Cron Jobs) ──
+  - type: cron
+    name: leash-delivery-sla-monitor
+    runtime: node
+    buildCommand: pnpm install && pnpm build
+    schedule: "0 */6 * * *"   # Every 6 hours
+    startCommand: pnpm --filter @leash/gateway node dist/workflows/delivery-sla-monitor.js delivery-sla-check
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: leash-postgres
+          property: connectionString
+      - key: PAYPAL_CLIENT_ID
+        sync: false
+      - key: PAYPAL_CLIENT_SECRET
+        sync: false
+      - key: PAYPAL_BASE_URL
+        value: https://api-m.sandbox.paypal.com
+
+  - type: cron
+    name: leash-authorization-expiry-void
+    runtime: node
+    buildCommand: pnpm install && pnpm build
+    schedule: "0 2 * * *"   # Daily at 2 AM UTC
+    startCommand: pnpm --filter @leash/gateway node dist/workflows/delivery-sla-monitor.js authorization-expiry-void
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: leash-postgres
+          property: connectionString
+      - key: PAYPAL_CLIENT_ID
+        sync: false
+      - key: PAYPAL_CLIENT_SECRET
+        sync: false
+      - key: PAYPAL_BASE_URL
+        value: https://api-m.sandbox.paypal.com
 
 databases:
   - name: leash-postgres

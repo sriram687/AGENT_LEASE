@@ -6,3 +6,4 @@ export { runDeterministicRules } from "./layers/deterministic.js";
 export { runLLMJudge } from "./layers/llm-judge.js";
 export { runInjectionScreen } from "./layers/injection-screen.js";
 export { runSemanticDedup } from "./layers/semantic-dedup.js";
+export { runElasticSemanticDedup, indexPurchaseRequestInElastic, getElasticClient } from "./layers/elastic-dedup.js";

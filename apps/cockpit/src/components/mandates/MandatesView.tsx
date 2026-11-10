@@ -19,6 +19,7 @@ import { CreateMandateModal } from "./CreateMandateModal";
 import { MandateSimulatorModal } from "./MandateSimulatorModal";
 import { SignatureInspectionModal } from "./SignatureInspectionModal";
 import { ActiveHoldsDrawer } from "@/components/holds/ActiveHoldsDrawer";
+import { MandateTimeline } from "./MandateTimeline";
 import { useRouter } from "next/navigation";
 
 interface MandatesViewProps {
@@ -442,6 +443,22 @@ export function MandatesView({ initialMandates }: MandatesViewProps) {
           </button>
         </div>
       )}
+
+      {/* Authorization Hold Timeline — Bryntum Scheduler pattern + Render Workflow SLA Monitor */}
+      <div style={{ marginTop: 8 }}>
+        <MandateTimeline
+          mandates={mandates.map((m) => ({
+            id: m.id,
+            name: m.purpose,
+            agentName: m.agentName,
+            spentCents: m.spentCents ?? 0,
+            limitCents: m.totalBudgetCents,
+            reservedCents: m.reservedCents ?? 0,
+            createdAt: m.createdAt,
+            status: m.status,
+          }))}
+        />
+      </div>
 
       {/* Modals */}
       <CreateMandateModal
